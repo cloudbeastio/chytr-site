@@ -1,0 +1,412 @@
+{
+  "product": "chytr",
+  "basePath": "/docs",
+  "sections": [
+    {
+      "id": "getting-started",
+      "title": "Getting started",
+      "order": 1,
+      "pages": [
+        {
+          "slug": "overview",
+          "title": "Overview",
+          "order": 1,
+          "status": "published",
+          "unlisted": false
+        },
+        {
+          "slug": "core-concepts",
+          "title": "Core concepts",
+          "order": 2,
+          "status": "published",
+          "unlisted": false
+        },
+        {
+          "slug": "quickstart",
+          "title": "Quickstart",
+          "order": 3,
+          "status": "published",
+          "unlisted": false
+        }
+      ]
+    },
+    {
+      "id": "features",
+      "title": "Features",
+      "order": 3,
+      "pages": [
+        {
+          "slug": "dash",
+          "title": "Dash",
+          "order": 1,
+          "status": "published",
+          "unlisted": false,
+          "group": "Quick"
+        },
+        {
+          "slug": "goals",
+          "title": "Goals",
+          "order": 2,
+          "status": "published",
+          "unlisted": false,
+          "group": "Quick"
+        },
+        {
+          "slug": "approvals",
+          "title": "Approvals",
+          "order": 3,
+          "status": "published",
+          "unlisted": false,
+          "group": "Quick"
+        },
+        {
+          "slug": "calendar",
+          "title": "Calendar",
+          "order": 4,
+          "status": "published",
+          "unlisted": false,
+          "group": "Quick"
+        },
+        {
+          "slug": "accounts",
+          "title": "Accounts",
+          "order": 5,
+          "status": "published",
+          "unlisted": false,
+          "group": "Relationships"
+        },
+        {
+          "slug": "contacts",
+          "title": "Contacts",
+          "order": 6,
+          "status": "published",
+          "unlisted": false,
+          "group": "Relationships"
+        },
+        {
+          "slug": "activities",
+          "title": "Activities",
+          "order": 7,
+          "status": "published",
+          "unlisted": false,
+          "group": "Relationships"
+        },
+        {
+          "slug": "territories",
+          "title": "Territories",
+          "order": 8,
+          "status": "published",
+          "unlisted": false,
+          "group": "Relationships"
+        },
+        {
+          "slug": "content",
+          "title": "Content",
+          "order": 9,
+          "status": "published",
+          "unlisted": false,
+          "group": "Marketing"
+        },
+        {
+          "slug": "icp",
+          "title": "ICP",
+          "order": 10,
+          "status": "published",
+          "unlisted": false,
+          "group": "Marketing"
+        },
+        {
+          "slug": "assets",
+          "title": "Assets",
+          "order": 11,
+          "status": "published",
+          "unlisted": false,
+          "group": "Marketing"
+        },
+        {
+          "slug": "campaigns",
+          "title": "Campaigns",
+          "order": 12,
+          "status": "published",
+          "unlisted": false,
+          "group": "Sales"
+        },
+        {
+          "slug": "pipeline",
+          "title": "Pipeline",
+          "order": 13,
+          "status": "published",
+          "unlisted": false,
+          "group": "Sales"
+        },
+        {
+          "slug": "deals",
+          "title": "Deals",
+          "order": 14,
+          "status": "published",
+          "unlisted": false,
+          "group": "Sales"
+        },
+        {
+          "slug": "products",
+          "title": "Products",
+          "order": 15,
+          "status": "published",
+          "unlisted": false,
+          "group": "Sales"
+        },
+        {
+          "slug": "desks",
+          "title": "Desks",
+          "order": 16,
+          "status": "published",
+          "unlisted": false,
+          "group": "Work"
+        },
+        {
+          "slug": "tasks",
+          "title": "Tasks",
+          "order": 17,
+          "status": "published",
+          "unlisted": false,
+          "group": "Work"
+        },
+        {
+          "slug": "work-items",
+          "title": "Work items",
+          "order": 18,
+          "status": "published",
+          "unlisted": false,
+          "group": "Work"
+        },
+        {
+          "slug": "pull-requests",
+          "title": "Pull requests",
+          "order": 19,
+          "status": "published",
+          "unlisted": false,
+          "group": "Work"
+        },
+        {
+          "slug": "github",
+          "title": "GitHub",
+          "order": 20,
+          "status": "published",
+          "unlisted": false,
+          "group": "Work"
+        },
+        {
+          "slug": "cases",
+          "title": "Cases",
+          "order": 21,
+          "status": "published",
+          "unlisted": false,
+          "group": "Support"
+        },
+        {
+          "slug": "agents",
+          "title": "Connecting agents",
+          "order": 22,
+          "status": "published",
+          "unlisted": false,
+          "group": "Agents"
+        },
+        {
+          "slug": "routines",
+          "title": "Routines",
+          "order": 23,
+          "status": "published",
+          "unlisted": false,
+          "group": "Agents"
+        },
+        {
+          "slug": "knowledge",
+          "title": "Knowledge",
+          "order": 24,
+          "status": "published",
+          "unlisted": false,
+          "group": "Agents"
+        },
+        {
+          "slug": "queues",
+          "title": "Queues",
+          "order": 25,
+          "status": "published",
+          "unlisted": false,
+          "group": "Agents"
+        },
+        {
+          "slug": "logs",
+          "title": "Logs",
+          "order": 26,
+          "status": "published",
+          "unlisted": false,
+          "group": "Agents"
+        },
+        {
+          "slug": "llms",
+          "title": "LLMs",
+          "order": 27,
+          "status": "published",
+          "unlisted": false,
+          "group": "Automations"
+        },
+        {
+          "slug": "classifiers",
+          "title": "Classifiers",
+          "order": 28,
+          "status": "published",
+          "unlisted": false,
+          "group": "Automations"
+        },
+        {
+          "slug": "decision-flows",
+          "title": "Decision flows",
+          "order": 29,
+          "status": "published",
+          "unlisted": false,
+          "group": "Automations"
+        },
+        {
+          "slug": "decisions",
+          "title": "Decisions",
+          "order": 30,
+          "status": "published",
+          "unlisted": false,
+          "group": "Automations"
+        },
+        {
+          "slug": "workflows",
+          "title": "Workflows",
+          "order": 31,
+          "status": "published",
+          "unlisted": false,
+          "group": "Automations"
+        },
+        {
+          "slug": "integrations",
+          "title": "Integrations",
+          "order": 32,
+          "status": "published",
+          "unlisted": false,
+          "group": "Admin"
+        },
+        {
+          "slug": "api-keys",
+          "title": "API keys",
+          "order": 33,
+          "status": "published",
+          "unlisted": false,
+          "group": "Admin"
+        },
+        {
+          "slug": "users",
+          "title": "Users and members",
+          "order": 34,
+          "status": "published",
+          "unlisted": false,
+          "group": "Admin"
+        },
+        {
+          "slug": "permission-sets",
+          "title": "Permission sets",
+          "order": 35,
+          "status": "published",
+          "unlisted": false,
+          "group": "Admin"
+        },
+        {
+          "slug": "domains",
+          "title": "Domains",
+          "order": 36,
+          "status": "published",
+          "unlisted": false,
+          "group": "Admin"
+        },
+        {
+          "slug": "approval-types",
+          "title": "Approval types",
+          "order": 37,
+          "status": "published",
+          "unlisted": false,
+          "group": "Admin"
+        },
+        {
+          "slug": "kg-health",
+          "title": "KG Health",
+          "order": 38,
+          "status": "published",
+          "unlisted": false,
+          "group": "Admin"
+        },
+        {
+          "slug": "meeting-pipeline",
+          "title": "Meeting pipeline",
+          "order": 39,
+          "status": "published",
+          "unlisted": false,
+          "group": "Admin"
+        },
+        {
+          "slug": "notifications",
+          "title": "Notifications",
+          "order": 40,
+          "status": "published",
+          "unlisted": false,
+          "group": "Admin"
+        },
+        {
+          "slug": "meetings",
+          "title": "Meetings and extraction",
+          "order": 41,
+          "status": "published",
+          "unlisted": false,
+          "group": "Quick"
+        },
+        {
+          "slug": "search",
+          "title": "Search",
+          "order": 42,
+          "status": "published",
+          "unlisted": false,
+          "group": "Quick"
+        }
+      ]
+    },
+    {
+      "id": "reference",
+      "title": "Reference",
+      "order": 4,
+      "pages": [
+        {
+          "slug": "mcp-tools",
+          "title": "MCP tools",
+          "order": 1,
+          "status": "published",
+          "unlisted": false
+        },
+        {
+          "slug": "permissions",
+          "title": "Permissions and API keys",
+          "order": 2,
+          "status": "published",
+          "unlisted": false
+        },
+        {
+          "slug": "entity-fields",
+          "title": "Entity fields",
+          "order": 3,
+          "status": "published",
+          "unlisted": false
+        },
+        {
+          "slug": "http-api",
+          "title": "HTTP API",
+          "order": 4,
+          "status": "published",
+          "unlisted": false
+        }
+      ]
+    }
+  ]
+}

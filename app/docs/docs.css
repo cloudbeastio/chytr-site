@@ -1,34 +1,16 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-body {
-  font-family: Arial, Helvetica, sans-serif;
+/* Docs use the shared brand tokens in app/globals.css. Code blocks: dark surface. */
+.prose pre {
+  background: #000;
+  border: 1px solid hsl(var(--border));
 }
-
-@layer base {
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 3.9%;
-    --primary: 0 0% 9%;
-    --primary-foreground: 0 0% 98%;
-    --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
-    --border: 0 0% 89.8%;
-  }
-  .dark {
-    --background: 0 0% 3.9%;
-    --foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
-    --border: 0 0% 14.9%;
-  }
-  * {
-    @apply border-border;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
+.hljs {
+  background: transparent;
+  color: #e6e6e6;
 }
+.hljs-comment, .hljs-quote { color: #8a8a8a; }
+.hljs-keyword, .hljs-selector-tag, .hljs-literal { color: #ffffff; font-weight: 700; }
+.hljs-string, .hljs-attr, .hljs-number { color: #c9c9c9; }
+.hljs-title, .hljs-name, .hljs-built_in { color: #ffffff; }
+
+.prose code::before,
+.prose code::after { content: none; }

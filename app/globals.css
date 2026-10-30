@@ -1,63 +1,31 @@
-@import url("https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=IBM+Plex+Mono:wght@400;500&display=swap");
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-/* Theme tokens mirrored from Cockpit (apps/cockpit/app/globals.css). */
-:root {
-  --bg0: #0e1412;
-  --bg1: #15201c;
-  --bg2: #1c2a24;
-  --ink: #e8f0ea;
-  --muted: #8aa396;
-  --line: rgba(232, 240, 234, 0.1);
-  --accent: #3dbe8c;
-  --accent-dim: rgba(61, 190, 140, 0.15);
-  --radius: 10px;
-  --font: "DM Sans", sans-serif;
-  --mono: "IBM Plex Mono", ui-monospace, monospace;
+/* chytr brand (public/brand/README.md): Ink Black, Paper White, Chyt Orange #FF4F00.
+   Orange is the accent only: the dot, the approval gate. Never body text or large fills. */
+@layer base {
+  :root {
+    --background: 0 0% 6.7%; /* #111 — README: prefer #111 or lighter so the icon square reads */
+    --foreground: 0 0% 100%;
+    --primary: 0 0% 100%;
+    --primary-foreground: 0 0% 0%;
+    --muted: 0 0% 12%;
+    --muted-foreground: 0 0% 64%;
+    --border: 0 0% 18%;
+    --chyt: 18 100% 50%; /* #FF4F00 */
+  }
+  html {
+    color-scheme: dark;
+  }
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background font-sans text-foreground antialiased;
+  }
+  ::selection {
+    background: #ff4f00;
+    color: #000;
+  }
 }
-
-* { box-sizing: border-box; }
-
-html, body {
-  margin: 0;
-  padding: 0;
-  min-height: 100%;
-  font-family: var(--font);
-  color: var(--ink);
-  background:
-    radial-gradient(1200px 600px at 10% -10%, rgba(61, 190, 140, 0.12), transparent 55%),
-    radial-gradient(900px 500px at 90% 0%, rgba(94, 184, 224, 0.08), transparent 50%),
-    linear-gradient(180deg, var(--bg0), var(--bg1) 40%, var(--bg0));
-  background-attachment: fixed;
-}
-
-a { color: var(--accent); text-decoration: none; }
-a:hover { text-decoration: underline; }
-
-.wrap { max-width: 960px; margin: 0 auto; padding: 0 1rem 3rem; }
-.top { padding: 1.25rem 0; border-bottom: 1px solid var(--line); }
-.brand { font-weight: 700; letter-spacing: -0.03em; font-size: 1.2rem; }
-.brand span { color: var(--accent); }
-
-.hero { padding: 5rem 0 3rem; }
-.eyebrow {
-  font-family: var(--mono);
-  font-size: 0.78rem;
-  color: var(--accent);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  margin: 0 0 1rem;
-}
-h1 { font-size: clamp(2rem, 6vw, 3.5rem); letter-spacing: -0.03em; line-height: 1.1; margin: 0 0 1rem; }
-.lede { color: var(--muted); font-size: 1.1rem; max-width: 40rem; margin: 0; }
-
-.grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
-.card {
-  background: var(--bg2);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  padding: 1.25rem;
-}
-.card h2 { font-size: 1rem; margin: 0 0 0.4rem; }
-.card p { color: var(--muted); font-size: 0.92rem; margin: 0; }
-
-.foot { margin-top: 4rem; padding-top: 1rem; border-top: 1px solid var(--line); color: var(--muted); font-size: 0.82rem; }

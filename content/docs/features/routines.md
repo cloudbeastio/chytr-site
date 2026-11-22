@@ -28,8 +28,8 @@ No MCP tool administers this registry. After a routine inserts a `todo`, the age
 |---|---|---|
 | `task_claim` | `tasks:write` | Claim the `todo` the routine minted |
 | `task_pickup` | `tasks:write`, `comments:read` | Claim plus the handoff comments |
-| `task_scheduled_create` | `schedules:write` | A different object: a cron on a task. Token only |
-| `task_scheduled_enable` | `schedules:write` | Enable that scheduled task. Token only |
+| `task_scheduled_create` | `routines:write` | A different object: a cron on a task. Token only |
+| `task_scheduled_enable` | `routines:write` | Enable that scheduled task. Token only |
 
 ## HTTP endpoints
 
@@ -42,7 +42,7 @@ No MCP tool administers this registry. After a routine inserts a `todo`, the age
 
 ## Permissions
 
-Changing a routine requires an admin session. A personal access token cannot administer this screen. Task pickup still uses `tasks:write` from one permission-set layer. `schedules:write` is token-only and applies to scheduled tasks, not to this registry.
+Changing a routine requires an admin session. A personal access token cannot administer this screen. Task pickup still uses `tasks:write` from one permission-set layer. `routines:write` is token-only and applies to scheduled tasks, not to this registry. The older `schedules:write` scope no longer gates any scheduled-task tool.
 
 Row access is RLS by creator. Admins see all rows. Members see their own.
 

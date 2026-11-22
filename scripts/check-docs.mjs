@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Fails if any shipped doc text contains private data or a leftover self-host link.
+// Fails if any shipped doc text contains private data or a link still on the source site's /docs/cockpit path.
 import { readFile, readdir } from "node:fs/promises"
 import path from "node:path"
 import { findPrivateData } from "./lib/docs-transform.mjs"
@@ -19,7 +19,7 @@ for (const root of ["content/docs", "public/docs"]) {
   for (const file of await walk(root)) {
     const text = await readFile(file, "utf8")
     for (const hit of findPrivateData(text)) errors.push(`${file}: ${hit.name} "${hit.match}"`)
-    if (/\/docs\/self-host\b|\/docs\/cockpit\b/.test(text)) errors.push(`${file}: stale docs link`)
+    if (/\/docs\/cockpit\b/.test(text)) errors.push(`${file}: stale docs link`)
   }
 }
 if (errors.length) {

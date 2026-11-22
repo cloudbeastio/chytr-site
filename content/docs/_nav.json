@@ -31,6 +31,48 @@
       ]
     },
     {
+      "id": "self-host",
+      "title": "Self-host",
+      "order": 2,
+      "pages": [
+        {
+          "slug": "requirements",
+          "title": "Requirements",
+          "order": 1,
+          "status": "published",
+          "unlisted": false
+        },
+        {
+          "slug": "database",
+          "title": "Database and Edge Functions",
+          "order": 2,
+          "status": "published",
+          "unlisted": false
+        },
+        {
+          "slug": "app",
+          "title": "App and environment",
+          "order": 3,
+          "status": "published",
+          "unlisted": false
+        },
+        {
+          "slug": "first-user",
+          "title": "First user",
+          "order": 4,
+          "status": "published",
+          "unlisted": false
+        },
+        {
+          "slug": "upgrading",
+          "title": "Upgrading",
+          "order": 5,
+          "status": "published",
+          "unlisted": false
+        }
+      ]
+    },
+    {
       "id": "features",
       "title": "Features",
       "order": 3,

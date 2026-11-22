@@ -6,6 +6,14 @@
 - [Core concepts](https://chytr.ai/docs/getting-started/core-concepts)
 - [Quickstart](https://chytr.ai/docs/getting-started/quickstart)
 
+## Self-host
+
+- [Requirements](https://chytr.ai/docs/self-host/requirements)
+- [Database and Edge Functions](https://chytr.ai/docs/self-host/database)
+- [App and environment](https://chytr.ai/docs/self-host/app)
+- [First user](https://chytr.ai/docs/self-host/first-user)
+- [Upgrading](https://chytr.ai/docs/self-host/upgrading)
+
 ## Features
 
 - [Dash](https://chytr.ai/docs/features/dash)

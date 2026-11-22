@@ -256,10 +256,33 @@ export function getListedNav(): ListedNavSection[] {
   return out
 }
 
+/** One listed section (id from _nav.json), or null when it has no listed pages. */
+export function getListedSection(id: string): ListedNavSection | null {
+  return getListedNav().find((section) => section.id === id) ?? null
+}
+
+/** Section ids that get an index page at /docs/<section>. */
+export function listedSectionIds(): string[] {
+  return getListedNav().map((section) => section.id)
+}
+
+/** Plain-Markdown index for one section: its title and every listed page in nav order. */
+export function renderSectionMarkdown(section: ListedNavSection, absolute = false): string {
+  const lines: string[] = [`# ${section.title}`, ""]
+  for (const page of section.pages) {
+    const href = absolute ? `${SITE_URL}${page.href}` : page.href
+    lines.push(`- [${page.title}](${href}) — ${page.description}`)
+  }
+  lines.push("")
+  return lines.join("\n")
+}
+
 export function listedDocPaths(): string[] {
   try {
-    const pages = getListedNav().flatMap((section) => section.pages.map((page) => page.href))
-    return [BASE_PATH, ...pages]
+    const nav = getListedNav()
+    const sections = nav.map((section) => `${BASE_PATH}/${section.id}`)
+    const pages = nav.flatMap((section) => section.pages.map((page) => page.href))
+    return [BASE_PATH, ...sections, ...pages]
   } catch (err) {
     console.error("[docs] listed paths failed", err)
     return []
@@ -293,6 +316,10 @@ export function docsMarkdownResponse(
     }
     const rest = clean.slice(BASE_PATH.length + 1)
     const parts = rest.split("/")
+    if (parts.length === 1) {
+      const section = getListedSection(parts[0])
+      return section ? { body: renderSectionMarkdown(section, true), status: 200 } : null
+    }
     if (parts.length !== 2) return null
     const doc = getDoc(parts[0], parts[1])
     if (!doc?.listed) return null

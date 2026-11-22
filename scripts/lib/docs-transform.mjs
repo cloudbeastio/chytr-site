@@ -41,11 +41,33 @@ export function findPrivateData(text) {
   return hits
 }
 
-/** Nav JSON: drop the self-host section, retarget basePath. */
+/**
+ * Sections the source keeps as preview (draft/unlisted) but this site publishes.
+ * The self-host install pages ship in the repo export; chytr.ai is where people read them.
+ */
+export const SITE_PUBLISHED_SECTIONS = new Set(["self-host"])
+
+/** Nav JSON: retarget basePath and publish the site-published sections. */
 export function transformNav(raw) {
   const nav = JSON.parse(raw)
   nav.product = "chytr"
   nav.basePath = "/docs"
-  nav.sections = nav.sections.filter((s) => s.id !== "self-host")
+  for (const section of nav.sections) {
+    if (!SITE_PUBLISHED_SECTIONS.has(section.id)) continue
+    for (const page of section.pages) {
+      page.status = "published"
+      page.unlisted = false
+    }
+  }
   return JSON.stringify(nav, null, 2) + "\n"
+}
+
+/** Page frontmatter: publish a page that belongs to a site-published section. */
+export function publishFrontmatter(text) {
+  const m = /^---\n([\s\S]*?)\n---\n/.exec(text)
+  if (!m) return text
+  const fm = m[1]
+    .replace(/^status:.*$/m, "status: published")
+    .replace(/^unlisted:.*$/m, "unlisted: false")
+  return `---\n${fm}\n---\n` + text.slice(m[0].length)
 }

@@ -144,6 +144,525 @@ Point the agent at `https://chytr.example.com/api/mcp` with `Authorization: Bear
 
 The top bar search matches tasks, accounts, contacts, and deals by name after two characters. It also resolves short ids. That search is not the semantic index. Use `/chat` when you want a question answered from indexed activity text. See [Search](/docs/features/search).
 
+# source: https://chytr.ai/docs/self-host/requirements
+
+# Requirements
+
+> **Preview.** Self-hosting chytr is not yet verified on a clean stack. `supabase/config.toml` ships placeholders (`project_id = "your-project-ref"`, a placeholder `site_url`, example redirect URLs) that you replace with your own project's values. The baseline still refers to a fixed placeholder owner id in some functions (see [Database and Edge Functions](/docs/self-host/database)), and `public.bootstrap_owner` claims a fresh install for its first owner. This page describes the intended flow. Do not treat it as a supported install.
+
+You bring the database and the app host. chytr does not ship as a managed service.
+
+The database ships as one migration, `supabase/migrations/00000000000000_baseline.sql`: a schema-only baseline with reference rows and no operator data.
+
+## Runtime
+
+| Piece | Requirement |
+|---|---|
+| Node.js | 22 or newer, for the repo tooling and for `apps/cockpit` |
+| Package manager | npm |
+| App host | Any Node 22 host. On Vercel, set the project root to `apps/cockpit` |
+| Database | Your own Supabase project, Postgres 17 (`major_version` in `supabase/config.toml`). A local `supabase start` runs 17.12 |
+| CLI | Supabase CLI, for `link`, `db push`, and `functions deploy` |
+| Local stack | Docker, only if you run `supabase start` on a machine |
+
+Clone this repository to get `apps/cockpit` and `supabase/`. No public clone URL is published with this preview.
+
+## Extensions the migrations enable
+
+These are the extensions migrations actually `CREATE`:
+
+- `pgcrypto`
+- `uuid-ossp`
+- `vector`
+- `pg_trgm`
+- `pgmq`
+- `pg_net`
+- `pg_cron`
+- `hstore`
+
+`pgflow` is not a Postgres extension. Migrations create a `pgflow` schema and load SQL into it. Do not look for `CREATE EXTENSION pgflow`.
+
+Not yet verified on a fresh project: that a new hosted Supabase project allows every extension above without a support request. Check that `pgmq`, `pg_cron`, `pg_net`, and `vector` are available on your plan before you run `db push`.
+
+## What you do not get
+
+A self-host starts as your project. You do not receive another operator's accounts, mail, meetings, or approval history. `supabase/seed.sql` is intentionally empty, so a local `supabase start` or `supabase db reset` gives the same empty install as `db push`. Read [Database and Edge Functions](/docs/self-host/database) before you run it.
+
+## Config uses placeholders
+
+`supabase/config.toml` ships with `project_id = "your-project-ref"`, a placeholder `site_url`, and example redirect URLs (`https://chytr.example.com/login`, plus `127.0.0.1:3000` and `localhost:3000` for local runs). Link the CLI at your own ref when you reach the database step, and replace the example origin with yours.
+
+Not yet verified: the minimum Supabase credentials a new operator needs. Expect to need the project's database password for `supabase link` and `db push`, and a Supabase access token for the CLI. Use your own project's values and keep them out of the repo.
+
+# source: https://chytr.ai/docs/self-host/database
+
+# Database and Edge Functions
+
+> **Preview.** Self-hosting chytr is not yet verified on a clean stack. `supabase/config.toml` ships placeholders (`project_id = "your-project-ref"`, a placeholder `site_url`, example redirect URLs) that you replace with your own project's values. The baseline still refers to a fixed placeholder owner id in some functions (see [Database and Edge Functions](/docs/self-host/database)), and `public.bootstrap_owner` claims a fresh install for its first owner. This page describes the intended flow. Do not treat it as a supported install.
+
+Apply the database before you deploy the app. The app calls RPCs that the migrations define.
+
+## Link your project
+
+From the repo root, point the CLI at the project you created. `supabase/config.toml` ships the placeholder `project_id = "your-project-ref"`; replace it with your project ref, or leave it and link explicitly:
+
+```bash
+supabase link --project-ref <your-project-ref>
+```
+
+Always pass `--project-ref` with your own ref. Before you push anything, check which project the CLI is linked to (`supabase projects list` marks the linked one). Linking on a fresh project has not yet been rehearsed end to end.
+
+## Apply migrations
+
+```bash
+supabase db push
+```
+
+The CLI applies `supabase/migrations` in filename order and records them in `supabase_migrations.schema_migrations`. Today that is one file, `00000000000000_baseline.sql`. A second `db push` reports `Local database is up to date` (or the remote equivalent). Do not edit a migration after it has been applied. Do not run dashboard DDL as a substitute.
+
+The baseline needs the extensions listed in [Requirements](/docs/self-host/requirements). A local `supabase start` provides all of them.
+
+### Known issue: placeholder owner id
+
+The baseline contains no real user id, but about 40 functions and 12 column defaults still refer to a fixed placeholder owner id instead of `app_settings.owner_user_id`. On a fresh install this shows up as:
+
+- **New project** in chytr does not create the project. It creates a pending `project_create` approval, and approving it creates another pending approval instead of the project. The project gate exempts only the placeholder id, not your owner.
+- Creating a project fails outright until the `projects_creation_gate` actor exists in `ops.agent_actors`. The baseline ships that table empty.
+
+Until these are fixed in the baseline, a fresh install cannot create its first project from the UI. There is no supported workaround in this preview.
+
+This section will be removed when a release fixes the baseline.
+
+`db push` does not run `supabase/seed.sql`. `supabase db reset` does, but the shipped seed is empty, so either path gives an empty install. Neither path creates a user. See [First user](/docs/self-host/first-user).
+
+## Edge Functions
+
+Sign-in and the task board use Supabase Auth and PostgREST RPCs. They do not require an Edge Function. You deploy functions when you turn on the features that call them. 29 functions ship in this export.
+
+> The agent heartbeat and dispatch functions (`ops-heartbeat`, `ops-dispatch`), the X, Instagram, and TikTok publishers and their MCP servers, the Notion marketing bridge, the analytics drain, and the chytr log ingest do not ship. Do not expect them to exist on your project.
+
+### Authentication
+
+Every function runs with `verify_jwt = false` in `supabase/config.toml`, so the Supabase gateway does not check a JWT. Each function authenticates its own callers. Deploy with `--no-verify-jwt` as well, so the setting holds even if a config block is missing:
+
+```bash
+supabase functions deploy <name> --no-verify-jwt
+```
+
+`functions deploy` needs a linked project. Without `supabase link` it stops with `Cannot find project ref. Have you run supabase link?`.
+
+The auth modes in the table below are:
+
+- **Service key.** `Authorization: Bearer <service key>`, compared in constant time against `SUPABASE_SERVICE_ROLE_KEY` (or `SUPABASE_SECRET_KEY` on projects that use the new key format). Only a bearer equal to that key is accepted. A hand-written token with a `service_role` claim is not.
+- **Cron secret.** An `x-cron-secret` header, checked by calling the service-role-only RPC `edge_cron_secret_verify` against a value stored in Vault. Pg_cron and trigger calls send it. Functions that accept it also accept the service key.
+- **Admin user.** A signed-in user JWT whose `user_profiles.is_admin` is true. Only some functions accept it, in addition to the machine modes.
+- **User JWT.** A signed-in user, validated with `auth.getUser`.
+- **PAT or OAuth.** A personal access token or an OAuth token for an MCP client.
+- **HMAC.** A GitHub webhook signature.
+
+A call that fails every mode gets a 401.
+
+### Function reference
+
+| Function | What it does | Kind | Auth | Secrets and config it reads |
+|---|---|---|---|---|
+| `mcp` | The MCP server: tools for tasks, approvals, entities, search, files, and more | User-facing | PAT or OAuth | `MCP_RESOURCE_URL`, `MCP_PUBLIC_ORIGIN`, `MCP_AUTH_SERVER`, `COCKPIT_APP_URL`, `CHYTR_URL`, `CHYTR_API_KEY` (optional, best-effort) |
+| `auth-pages` | Serves the sign-in, token, account, integrations, and MCP consent pages | User-facing | Public HTML; the pages call Supabase Auth | `AUTH_PAGES_HTML`, `PUBLIC_BASE_URL`, `SUPPORT_EMAIL` |
+| `auth-token` | Password and email-code sign-in for the auth pages | User-facing | Public endpoint, validates credentials | none beyond platform keys |
+| `auth-pat` | Creates and manages personal access tokens | User-facing | User JWT | `AUTH_ALLOWED_ORIGINS` |
+| `oauth-integrations` | Provider connect for Google, GitHub, and X: start, callback, complete, disconnect | User-facing | User JWT; the provider callback is a bounce only | `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, `GITHUB_OAUTH_CLIENT_ID`, `GITHUB_OAUTH_CLIENT_SECRET`, `X_OAUTH_CLIENT_ID`, `X_OAUTH_CLIENT_SECRET`, `INTEGRATIONS_OAUTH_STATE_SECRET`, `OAUTH_INTEGRATIONS_REDIRECT_URI`, `OAUTH_UI_RETURN_ORIGINS`, `COCKPIT_ORIGIN`, `GOOGLE_OAUTH_SCOPES`, `X_OAUTH_SCOPES`, `GITHUB_OAUTH_SCOPES` |
+| `cockpit-api` | chytr reads, notification resolve, and redirect info | User-facing | User JWT (OAuth client tokens are rejected) | platform keys |
+| `search` | Semantic search over the RAG index | User-facing | User JWT (OAuth client tokens are rejected) | platform keys |
+| `task-close-gate` | Checks linked pull requests, merges them, and closes a task | User-facing | User JWT | GitHub App values below |
+| `github-repo-status` | Refreshes the cached repo, pull request, and branch state; archive action | User-facing and worker | User JWT, or cron secret or service key for reconcile. Archive needs a user JWT | `GITHUB_ORG`, GitHub App values below |
+| `github-webhook` | Receives GitHub App webhooks to keep the pull request cache current | Webhook | HMAC (`X-Hub-Signature-256`) | `GITHUB_WEBHOOK_SECRET` |
+| `voice-pages` | Serves the voice agent page | User-facing | Public HTML | `AUTH_PAGES_HTML` |
+| `voice-token` | Mints a short-lived PAT and an xAI client secret for the voice page | User-facing | User JWT | `XAI_API_KEY`, `XAI_SKILL_COLLECTION_ID` |
+| `record-update` | chytr entity edits that write to a GitHub wiki repository and mirror to Postgres | User-facing | User JWT | GitHub OAuth values, `GITHUB_ORG` |
+| `agent-bus` | HTTP facade for the agent message bus | Worker or client | Cron secret or service key. Reads and ack also accept an admin user | platform keys |
+| `cb-activity-classifier` | Labels activities with a quality class and work type | Worker | Cron secret or service key | `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL`, `CB_ROUTINES_REPO`, `CB_ROUTINES_REF`, `CB_ROUTINES_SKILL_BASE_URL` |
+| `cb-activity-process` | Per-activity processing: links, merge proposals, signals | Worker | Cron secret or service key | `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL`, `CB_ROUTINES_REPO`, `CB_ROUTINES_REF`, `CB_ROUTINES_SKILL_BASE_URL` |
+| `decision-worker` | Drains the decision job queue | Worker | Cron secret or service key | `ANTHROPIC_API_KEY` |
+| `enrichment-worker` | Drains the enrichment queue: link, enrich, web enrich, sentiment, scorecard | Worker | Cron secret or service key | `EXA_API_KEY`, `ENRICHMENT_WORKER_BATCH`, `CB_SCORECARD_ENABLED` |
+| `extraction-route` | Runs extraction for one activity, called by a database trigger | Worker | Cron secret or service key | platform keys |
+| `icp-scoring-worker` | Re-scores accounts against the active ICP version | Worker | Cron secret or service key | `XAI_API_KEY` |
+| `ingestion-worker` | Drains the Gmail and Calendar ingestion queue | Worker | Cron secret or service key | `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, `INGESTION_WORKER_BATCH` |
+| `google-sync` | Hourly poll that enqueues Gmail and Calendar ingestion per connection | Worker | Cron secret or service key | `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET` |
+| `notion-sync` | Readiness-gated poll of a Notion meeting-notes database | Worker | Cron secret, service key, or admin user | `NOTION_INTEGRATION_TOKEN`, `NOTION_MEETING_NOTES_DB_ID`, `MEETING_POLL_DRY_RUN`, `MEETING_POLL_DISPATCH`, `MEETING_POLL_SETTLE_MINUTES`, `MEETING_POLL_MAX_DISPATCH` |
+| `rag-worker` | Chunks and embeds content into the RAG index | Worker | Cron secret or service key | `RAG_WORKER_BATCH` |
+| `skill-sync` | Uploads skill markdown to an xAI collection | Worker | Cron secret or service key | `XAI_API_KEY`, `XAI_MANAGEMENT_API_KEY`, `XAI_SKILL_COLLECTION_ID`, `SKILL_SYNC_BATCH` |
+| `pgflow-step-worker` | Executes workflow step tasks | Worker | Cron secret or service key | platform keys |
+| `backfill-orchestrator` | Manual backfill of ingestion processing and embeddings | Operator | Service key | platform keys |
+| `search-maintenance` | Daily, weekly, and monthly search index maintenance | Worker | Service key only | platform keys |
+| `entity-extractor` | Retired. A no-op stub that returns `{"ok":true,"retired":true}` | None | Service key | none |
+
+Platform keys are `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, and `SUPABASE_SECRET_KEY`. Supabase injects them into every function. You do not set them.
+
+Notes on specific functions:
+
+- **`record-update`** reads a wiki entity file from a GitHub repository with the signed-in user's GitHub OAuth token, patches it, commits it, and mirrors the change into Postgres. The repository name is fixed in code and the owner comes from `GITHUB_ORG`. A standalone install has no such repository, so do not deploy this function unless you maintain a repository with that layout. chytr does not need it to load.
+- **`cb-activity-classifier` and `cb-activity-process`** fetch their prompt text as markdown from a GitHub repository at run time. A 404 or a network failure falls back to a bundled copy for known prompts. Set `CB_ROUTINES_SKILL_BASE_URL` to host the files yourself. Check this behavior on your project before trusting it.
+- **`notion-sync`** defaults to a dry run that writes nothing, and it never dispatches work unless you ask. See Notion below.
+- **`entity-extractor`** does nothing. Deploying it is harmless and unnecessary.
+
+### What to deploy
+
+A working install with sign-in, the task board, and agents over MCP needs these:
+
+```bash
+supabase functions deploy mcp auth-pages auth-token auth-pat cockpit-api --no-verify-jwt
+```
+
+Add the group for each feature you turn on:
+
+| Feature | Functions |
+|---|---|
+| Search embeddings | `rag-worker`, `search` |
+| Mail and calendar | `oauth-integrations`, `google-sync`, `ingestion-worker`, `cb-activity-classifier`, `cb-activity-process`, `decision-worker`, `enrichment-worker`, `extraction-route` |
+| Provider connect in Settings | `oauth-integrations` |
+| GitHub pull request tracking and task close | `github-webhook`, `github-repo-status`, `task-close-gate` |
+| Notion meeting notes | `notion-sync` |
+| Voice | `voice-pages`, `voice-token`, `skill-sync` |
+| Workflows | `pgflow-step-worker` |
+| ICP scoring | `icp-scoring-worker` |
+| Agent message bus | `agent-bus` |
+| Operator tools | `backfill-orchestrator`, `search-maintenance` |
+
+Deploy functions by name rather than all at once. `supabase/config.toml` still contains blocks for functions that do not ship, and a full `supabase functions deploy` has not been run against a clean project.
+
+### How workers are scheduled
+
+The export ships no scheduled jobs. The baseline installs the queues, the worker-side database functions, and the helper `util.invoke_edge_function`, but it neutralizes every `cron.schedule` call. Until you schedule them, the worker functions only run when you call them.
+
+Two mechanisms drive the workers:
+
+- **Queue drains.** Database functions such as `util.process_rag_jobs`, `util.process_ingestion_jobs`, and `util.process_enrichment_jobs` read a pgmq queue and call the matching Edge Function through `util.invoke_edge_function`. In the original deployment they ran every 10 to 15 seconds under pg_cron.
+- **Direct ticks.** pg_cron calls `util.invoke_edge_function('<name>', '<json body>'::jsonb)` on a cadence. For example, `google-sync` ran hourly.
+
+`util.invoke_edge_function` posts to `<project url>/functions/v1/<name>` with `net.http_post`. It builds the URL from a Vault secret named `project_url`, and it sends the cron secret in `x-cron-secret`. Both values live in Vault:
+
+| Vault secret name | Purpose |
+|---|---|
+| `project_url` | Base URL of your project, `https://<your-project-ref>.supabase.co`, no trailing slash |
+| `edge_cron_secret` | Random value of at least 32 characters. `util.invoke_edge_function` sends it, and `edge_cron_secret_verify` compares it |
+
+The migrations that created `edge_cron_secret` mint a random value if none exists. Whether the shipped baseline creates either secret is not verified, so check `select name from vault.secrets` after `db push`. To create a missing one, use the Vault function the migrations use:
+
+```sql
+select vault.create_secret('<random value, 32+ characters>', 'edge_cron_secret', 'x-cron-secret for Edge Functions');
+select vault.create_secret('https://<your-project-ref>.supabase.co', 'project_url');
+```
+
+You never set the cron secret as an Edge Function secret. It is a database-side value. Each function asks the database whether the header matches, and keeps a positive answer in memory for five minutes. If the database is unreachable or the secret is missing, the function returns 401. A rotated value takes effect after the cache expires.
+
+To schedule a worker, call `cron.schedule` yourself. For example, an hourly Google poll:
+
+```sql
+select cron.schedule(
+  'google-sync-poll',
+  '0 * * * *',
+  $$select util.invoke_edge_function('google-sync', '[]'::jsonb, 180000);$$
+);
+```
+
+There is no supported schedule list yet for the activity classifier, activity processor, decision worker, ICP scoring worker, or pgflow step worker. This release ships no cron jobs for them. Until a schedule is published, run them on demand or pick your own cadence and watch the Queues and Logs screens.
+
+Some of these workers also read a `routine_config` row by name and skip with `reason: disabled` if it is missing or disabled. Check that the rows you need exist before you schedule a routine worker.
+
+### Secrets
+
+Set function secrets with `supabase secrets set NAME=<value>`. Never commit a value.
+
+Most provider secrets can also be stored in the app. The LLMs and Integrations screens write them for a user or for the workspace, and Vault holds the stored value. A function resolves a secret in this order: the signed-in user's value, the workspace value, the legacy Vault store, then the environment variable named below. An error in that lookup falls back to the environment. The Supabase platform keys are never resolved this way. They stay in the environment.
+
+| Name | Used by | Required |
+|---|---|---|
+| `ANTHROPIC_API_KEY` | `cb-activity-classifier`, `cb-activity-process`, `decision-worker` | Required for the activity pipeline |
+| `ANTHROPIC_MODEL` | `cb-activity-classifier`, `cb-activity-process` | Optional. Overrides the model |
+| `XAI_API_KEY` | `voice-token`, `skill-sync`, `icp-scoring-worker` | Optional. Voice, skill sync, ICP scoring |
+| `XAI_MANAGEMENT_API_KEY` | `skill-sync` | Optional |
+| `XAI_SKILL_COLLECTION_ID` | `voice-token`, `skill-sync` | Optional. Plain env var only |
+| `EXA_API_KEY` | `enrichment-worker` | Optional. Web enrichment |
+| `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET` | `oauth-integrations`, `google-sync`, `ingestion-worker` | Required for Google |
+| `GITHUB_OAUTH_CLIENT_ID`, `GITHUB_OAUTH_CLIENT_SECRET` | `oauth-integrations`, `record-update` | Optional. Per-user GitHub connect |
+| `GITHUB_APP_ID`, `GITHUB_APP_INSTALLATION_ID`, `GITHUB_APP_PRIVATE_KEY` | `github-repo-status`, `task-close-gate` | Optional. GitHub App |
+| `GITHUB_WEBHOOK_SECRET` | `github-webhook` | Required if you deploy the webhook |
+| `GITHUB_ORG` | GitHub functions | Optional config. Owner for repository lookups |
+| `X_OAUTH_CLIENT_ID`, `X_OAUTH_CLIENT_SECRET` | `oauth-integrations` | Optional. See the X note below |
+| `INTEGRATIONS_OAUTH_STATE_SECRET` | `oauth-integrations` | Required for any provider connect. Signs the OAuth state |
+| `NOTION_INTEGRATION_TOKEN` (alias `NOTION_INTERNAL_TOKEN`) | `notion-sync` | Required for Notion |
+| `NOTION_MEETING_NOTES_DB_ID` | `notion-sync` | Optional. Overrides the database id |
+| `OAUTH_INTEGRATIONS_REDIRECT_URI` | `oauth-integrations` | Optional. Overrides the callback URL |
+| `OAUTH_UI_RETURN_ORIGINS` | `oauth-integrations` | Optional. Extra allowed chytr origins, comma separated |
+| `COCKPIT_ORIGIN` | `oauth-integrations` | Set this to your chytr origin. The default points at the original deployment |
+| `COCKPIT_APP_URL` | `mcp` and shared links | Optional. Origin for chytr deep links. Falls back to `MCP_PUBLIC_ORIGIN` |
+| `MCP_RESOURCE_URL`, `MCP_PUBLIC_ORIGIN`, `MCP_AUTH_SERVER` | `mcp` | Optional. Public URLs advertised to MCP clients |
+| `AUTH_ALLOWED_ORIGINS` | `auth-pat`, `auth-token`, `voice-token` | Optional. CORS origins, comma separated |
+| `AUTH_PAGES_HTML` | `auth-pages`, `voice-pages` | Optional. Set `true` with a custom domain to serve `text/html` |
+| `PUBLIC_BASE_URL`, `SUPPORT_EMAIL` | `auth-pages` | Optional. Shown on the pages |
+| `CB_ROUTINES_REPO`, `CB_ROUTINES_REF`, `CB_ROUTINES_SKILL_BASE_URL` | `cb-activity-classifier`, `cb-activity-process` | Optional. Where prompt markdown is fetched from |
+| `CB_SCORECARD_ENABLED` | `enrichment-worker` | Optional. `true` turns on scorecard jobs |
+| `RAG_WORKER_BATCH`, `INGESTION_WORKER_BATCH`, `ENRICHMENT_WORKER_BATCH`, `SKILL_SYNC_BATCH` | the matching worker | Optional. Batch sizes, capped at 50 |
+| `MEETING_POLL_DRY_RUN`, `MEETING_POLL_DISPATCH`, `MEETING_POLL_SETTLE_MINUTES`, `MEETING_POLL_MAX_DISPATCH` | `notion-sync` | Optional. Poll behavior |
+| `GOOGLE_OAUTH_SCOPES`, `X_OAUTH_SCOPES`, `GITHUB_OAUTH_SCOPES` | `oauth-integrations` | Optional. Override the default scopes |
+
+chytr loads without any of the optional ones. The related screens stay idle.
+
+## Integrations (optional)
+
+Each integration is off until you configure it. Set a value either as a function secret or on the Integrations screen.
+
+### Google (Gmail and Calendar)
+
+1. In Google Cloud, create an OAuth client of type Web application. Enable the Gmail API, the Google Calendar API, and the Drive API.
+2. Add the redirect URI. It is the `oauth-integrations` function URL, `https://<your-project-ref>.supabase.co/functions/v1/oauth-integrations`, unless you set `OAUTH_INTEGRATIONS_REDIRECT_URI`, in which case use that value exactly.
+3. Set `GOOGLE_OAUTH_CLIENT_ID` and `GOOGLE_OAUTH_CLIENT_SECRET`, plus `INTEGRATIONS_OAUTH_STATE_SECRET` (any long random string).
+4. Set `COCKPIT_ORIGIN` to your chytr origin, or add it to `OAUTH_UI_RETURN_ORIGINS`. The connect flow only returns to an allowed origin.
+5. Deploy `oauth-integrations`, then `google-sync`, `ingestion-worker`, and the processing workers. Schedule them as described above.
+6. Connect from Settings. The default scopes are `openid`, `email`, `profile`, and read-only access to Gmail, Calendar, and Drive. Set `GOOGLE_OAUTH_SCOPES` to narrow them.
+
+### GitHub App and webhook
+
+The GitHub App keeps the pull request cache current and powers task close.
+
+1. Create a GitHub App and install it on the organization or account that owns your repositories.
+2. Set `GITHUB_APP_ID`, `GITHUB_APP_INSTALLATION_ID`, and `GITHUB_APP_PRIVATE_KEY`. Set `GITHUB_ORG` to the owner name.
+3. Set the app's webhook URL to `https://<your-project-ref>.supabase.co/functions/v1/github-webhook` and choose a webhook secret. Set the same value as `GITHUB_WEBHOOK_SECRET`. The function verifies the `X-Hub-Signature-256` HMAC and rejects a call without it.
+4. Deploy `github-webhook`, `github-repo-status`, and `task-close-gate`.
+
+### GitHub OAuth (per-user connect)
+
+Create a GitHub OAuth App. Set its callback URL to the same `oauth-integrations` URL as for Google. Set `GITHUB_OAUTH_CLIENT_ID` and `GITHUB_OAUTH_CLIENT_SECRET`. The default scopes are `repo` and `read:user`. Set `GITHUB_OAUTH_SCOPES` to change them.
+
+### Notion
+
+1. Create an internal integration in Notion and copy its token into `NOTION_INTEGRATION_TOKEN`.
+2. Share your meeting-notes database with the integration.
+3. Set `NOTION_MEETING_NOTES_DB_ID` to that database's id. Without it the function uses a default id from the original deployment.
+4. Deploy `notion-sync`.
+
+The poll defaults to a dry run that writes nothing and dispatches nothing. A request body of `{"dry_run": false}` or the `MEETING_POLL_DRY_RUN=false` variable turns writes on. Dispatching a note to an agent is a separate switch, `dispatch` or `MEETING_POLL_DISPATCH`. The agent dispatch functions do not ship, so leave dispatch off.
+
+### xAI voice
+
+Deploy `voice-pages` and `voice-token`. Set `XAI_API_KEY`. Set `XAI_SKILL_COLLECTION_ID` if you use an xAI skill collection. `skill-sync` also needs `XAI_MANAGEMENT_API_KEY`. `voice-token` mints a short-lived token with read-mostly scopes for the voice page.
+
+### LLM providers
+
+Set `ANTHROPIC_API_KEY` for the activity pipeline, or enter the key on the LLMs screen. Set `XAI_API_KEY` if you use xAI routes. `EXA_API_KEY` enables web enrichment.
+
+### X
+
+The X connect flow in `oauth-integrations` exists and needs `X_OAUTH_CLIENT_ID` and `X_OAUTH_CLIENT_SECRET`. No X publisher ships in this release, so connecting an account does not post anything.
+
+### chytr log drain
+
+The chytr log drain is not included. Its ingest function does not ship.
+
+# source: https://chytr.ai/docs/self-host/app
+
+# App and environment
+
+> **Preview.** Self-hosting chytr is not yet verified on a clean stack. `supabase/config.toml` ships placeholders (`project_id = "your-project-ref"`, a placeholder `site_url`, example redirect URLs) that you replace with your own project's values. The baseline still refers to a fixed placeholder owner id in some functions (see [Database and Edge Functions](/docs/self-host/database)), and `public.bootstrap_owner` claims a fresh install for its first owner. This page describes the intended flow. Do not treat it as a supported install.
+
+The app lives in `apps/cockpit`. It is a Next.js app. The browser talks to `/cockpit/api` on the same host. That API uses the signed-in user's Supabase session.
+
+## Variables
+
+Copy `apps/cockpit/.env.example` to `.env.local` for a local run. On a host, set the same keys in the host's environment. Never commit values.
+
+| Variable | Where it is read | Required |
+|---|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | Browser and server | Yes. Your project URL, `https://<your-project-ref>.supabase.co` |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Browser and server | Yes. The anon or publishable key only |
+| `SUPABASE_SERVICE_ROLE_KEY` | Server only | Yes for invites, ingest, and other privileged routes. Never expose it to the client bundle |
+| `MCP_RESOURCE_URL` | Server | Optional. Defaults to this host's `/api/mcp` |
+| `MCP_AUTH_SERVER` | Server | Optional. Defaults to `<SUPABASE_URL>/auth/v1` |
+| `ANTHROPIC_API_KEY` | Server | Optional. Deck chat and graph chat |
+| `XAI_API_KEY` | Server | Optional. Voice routes |
+| `NEXT_PUBLIC_WIKI_GITHUB_BASE` | Client | Optional. Base URL for wiki links. Leave empty if you have no wiki |
+| `COCKPIT_HOME` | Server | Optional. Overrides the authenticated redirect from `/` |
+| `COCKPIT_APP_URL` | Server | Origin of this app, no path. Invite links redirect to `<origin>/login`. `NEXT_PUBLIC_SITE_URL` and `APP_URL` are accepted aliases. Never set it to the Supabase API host |
+| `COCKPIT_ALLOWED_HOSTS` | Server | Optional. Comma-separated hostnames, no scheme. When no app URL variable is set, the invite redirect may use the request's own origin, but only if its host is listed here. Set it to your chytr hostname if you rely on that fallback |
+| `NEXT_PUBLIC_SITE_URL`, `APP_URL` | Server | Optional aliases for `COCKPIT_APP_URL`, checked in that order after it |
+| `VERCEL_PROJECT_PRODUCTION_URL`, `VERCEL_BRANCH_URL`, `VERCEL_URL`, `VERCEL_ENV` | Server | Set by Vercel. The invite redirect falls back to them when no app URL variable is set. You do not set them yourself |
+
+`apps/cockpit/.env.example` lists every variable above that you set yourself, with empty values. `MCP_PUBLIC_ORIGIN` is read by the `mcp` Edge Function, not by the app. Set it as a function secret. See [Database and Edge Functions](/docs/self-host/database).
+
+The service-role key bypasses row security. The app uses it only on routes that already checked a workspace owner or admin, plus the ingest route, which accepts only a personal access token holding the `agent_logs:write` scope instead of a user session. Treat the key as production secret material.
+
+## Build
+
+Intended local commands:
+
+```bash
+cd apps/cockpit
+npm install
+npm run build
+npm run start
+```
+
+On Vercel, set the root directory to `apps/cockpit` and set the variables above in the project environment.
+
+`npm run build` reads `.env.local`, and the client inlines the `NEXT_PUBLIC_*` values at build time, so set them before you build. `npm run start` serves on port 3000.
+
+### Build status of the export
+
+Earlier preview exports failed `npm run build` for two packaging reasons: the docs copy step looked only in `docs/public/cockpit`, and one line of `components/settings/KnowledgeSettings.tsx` was broken by the export scrub. The copy step now also reads `docs/cockpit`, the layout this tree uses (`apps/cockpit/lib/copyCockpitDocs.ts`), and that line now exports as plain text. A full build of a fresh export has not been re-run since those fixes. If the build fails, report it as described in `SECURITY.md` or `CONTRIBUTING.md`.
+
+## Auth URLs
+
+Set `COCKPIT_APP_URL` to the chytr origin, for example `https://chytr.example.com`. Invites redirect to `https://chytr.example.com/login`.
+
+In Supabase Auth, add that `/login` URL to **Redirect URLs**. **Site URL** stays the API host that serves the OAuth consent page. It is not the chytr origin. The invite email href must be `{{ .ConfirmationURL }}`, which carries the allowlisted redirect. Do not use `{{ .SiteURL }}` as the href.
+
+## Sign-in email must carry the code
+
+The login form signs people in with a 6-digit code. Supabase's default **Magic Link** email contains only a link, and that link does not sign anyone in to chytr. Edit the Magic Link email template so it includes the code:
+
+```html
+<p>Your chytr sign-in code: {{ .Token }}</p>
+```
+
+On a hosted project, edit **Authentication → Emails → Magic Link**. On a local stack, point `config.toml` at a template file and restart with `supabase stop` and `supabase start`:
+
+```toml
+[auth.email.template.magic_link]
+subject = "Your chytr sign-in code"
+content_path = "./supabase/templates/magic_link.html"
+```
+
+MCP OAuth consent is a different URL. `supabase/config.toml` points the OAuth server authorization path at the `auth-pages` Edge Function, not at chytr `/login`.
+
+`supabase/config.toml` ships placeholders: a `site_url` built on the `your-project-ref` placeholder host, and example redirect URLs on `chytr.example.com`. Replace them with your own values, keeping the rule above: Site URL is your project's API host (`https://<your-project-ref>.supabase.co`), and `<your-app-origin>/login` goes in Redirect URLs. The exact dashboard click-path has not been rechecked against the current Supabase UI.
+
+## Sign-in form
+
+The login page is email plus a one-time code. The email field starts empty.
+
+# source: https://chytr.ai/docs/self-host/first-user
+
+# First user
+
+> **Preview.** Self-hosting chytr is not yet verified on a clean stack. `supabase/config.toml` ships placeholders (`project_id = "your-project-ref"`, a placeholder `site_url`, example redirect URLs) that you replace with your own project's values. The baseline still refers to a fixed placeholder owner id in some functions (see [Database and Edge Functions](/docs/self-host/database)), and `public.bootstrap_owner` claims a fresh install for its first owner. This page describes the intended flow. Do not treat it as a supported install.
+
+The login form will not create your user. `shouldCreateUser` is false. You create the user first, then sign in with a one-time code.
+
+## Intended steps
+
+1. In the Supabase dashboard, add a user with a confirmed email, or create one with the Auth admin API:
+
+   ```bash
+   curl -X POST "$SUPABASE_URL/auth/v1/admin/users" \
+     -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+     -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+     -H 'content-type: application/json' \
+     -d '{"email":"<your-email>","email_confirm":true}'
+   ```
+
+2. Set the site URL and redirect allowlist to your chytr origin, and add the code to the Magic Link email. See [App and environment](/docs/self-host/app).
+3. Make that user the owner by running `select public.bootstrap_owner('<your-email>')` as the service role (see below).
+4. Open `/login`, enter the email, enter the 6-digit code from the email, and land on `/tasks`.
+
+The Supabase dashboard click-path for adding a user and for the redirect allowlist has not been rechecked against the current dashboard. Use the Auth admin API call above if the dashboard differs, and look for the redirect URL settings under your project's Auth configuration.
+
+## The owner setting
+
+The baseline ships `public.bootstrap_owner(p_email text)`. It is the one-shot claim of an empty install. Run it once, after you create the auth user, with the service role (the SQL editor in the Supabase dashboard runs as a role that can do this, or connect as `service_role`):
+
+```sql
+select public.bootstrap_owner('<your-email>');
+```
+
+Or call it over the API with the service-role key:
+
+```bash
+curl -X POST "$SUPABASE_URL/rest/v1/rpc/bootstrap_owner" \
+  -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+  -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+  -H 'content-type: application/json' \
+  -d '{"p_email":"<your-email>"}'
+```
+
+It returns the owner's `user_id`, `workspace_id`, `workspace_role: owner` and `is_admin: true`. The same call with the anon key fails with `permission denied for function bootstrap_owner`.
+
+It looks up the existing auth user by email and, in one transaction:
+
+1. sets `app_settings.owner_user_id` to that user's id;
+2. sets `user_profiles.is_admin = true`;
+3. grants the admin permission set;
+4. makes the user the `owner` of the install workspace.
+
+A second call, from anyone, raises `owner already set`. `anon`, `authenticated` and `PUBLIC` cannot execute the function; only `service_role` (and the database owner) can, so nobody who can merely sign up can claim the install first. The baseline contains no real user id and no operator rows.
+
+## Admin versus owner
+
+`public.is_admin()` reads `user_profiles.is_admin`. `bootstrap_owner` sets that flag for the first owner. Some writes, including extraction thresholds, call `is_admin()`. Workspace membership roles (`owner`, `admin`, `member`) are a separate table, and the users screen can invite people only after an owner or admin membership already exists.
+
+In the app, the check is workspace membership, not `is_admin`. Every `/settings/*` screen, and the whole Admin navigation group (integrations, API keys, users, permission sets, domains, approval types, health, meeting pipeline, notifications), is open only to a user with an active `owner` or `admin` membership. Anyone else is redirected to `/`. `is_admin()` is checked by the database on specific writes, for example job control and activity edits. `bootstrap_owner` sets both, so the first owner passes both checks. A member who has `is_admin` set but no owner or admin membership would still be turned away from Settings.
+
+## What a finished install should prove
+
+After `bootstrap_owner` has run, the check is:
+
+1. `/login` returns a page.
+2. The one-time code signs the new user in.
+3. `/tasks` renders a board.
+4. Creating a task shows that task on the board, owned by the signed-in user.
+
+A new task needs a project and a domain. A fresh install has neither.
+
+### Known issue: the first task cannot be created
+
+On a local clean-stack rehearsal, steps 1 to 3 pass. Step 4 does not:
+
+- **New project** does not create a project on a fresh install. See the known issue in [Database and Edge Functions](/docs/self-host/database).
+- **New task** fails with `task_create: invalid domain: shared`, because the baseline ships `public.domains` empty.
+
+This page stays unpublished until both are fixed in the baseline.
+
+Re-run the four-step check once the baseline ships domains and owner-aware project creation. Until then this known issue stands.
+
+# source: https://chytr.ai/docs/self-host/upgrading
+
+# Upgrading
+
+> **Preview.** Self-hosting chytr is not yet verified on a clean stack. `supabase/config.toml` ships placeholders (`project_id = "your-project-ref"`, a placeholder `site_url`, example redirect URLs) that you replace with your own project's values. The baseline still refers to a fixed placeholder owner id in some functions (see [Database and Edge Functions](/docs/self-host/database)), and `public.bootstrap_owner` claims a fresh install for its first owner. This page describes the intended flow. Do not treat it as a supported install.
+
+The app and the database version together. Migrate the database before you deploy a newer app. An app build can call RPCs that the previous schema does not have.
+
+## Intended order
+
+1. Read the release notes. Stop if a migration is marked destructive.
+2. Take a backup, or a point-in-time snapshot from your host. `supabase db dump` writes the schema only, so dump data and roles too:
+
+   ```bash
+   supabase db dump -f schema.sql
+   supabase db dump --data-only -f data.sql
+   supabase db dump --role-only -f roles.sql
+   ```
+3. Check out the release you intend to run.
+4. `supabase db push`. Only new filenames apply. Order is the filename. The tracker is `supabase_migrations.schema_migrations`.
+5. `supabase functions deploy`.
+6. Deploy `apps/cockpit`.
+7. Sign in and open `/tasks`.
+
+There is no tagged release yet, so there is no version to pin. Until one exists, update to the revision you intend to run and do not assume a tag name. Skipping versions should work because migrations are cumulative and only new filenames apply, but that has not been rehearsed.
+
+## Rules that match the repo
+
+- Migrations are forward-only. There is no down migration. Rolling back means restoring the backup and deploying the previous app build.
+- Do not edit a migration that has already been applied.
+- If `db push` reports drift between `schema_migrations` and the files on disk, stop. Compare the applied versions to `supabase/migrations` before you repair anything. Do not paper over drift with dashboard DDL.
+- Function secrets are not overwritten by deploy. A release that needs a new secret has to say so. This preview does not yet have that release-note channel.
+- New personal-access-token scopes are not added to tokens you already issued. Re-issue tokens after an upgrade that adds scopes.
+
+Not yet rehearsed: restoring from a backup and redeploying the previous app build. The three dump commands were run on a local stack. A restore from their output was not.
+
+## What an upgrade does not fix
+
+Upgrading does not remove the fixed operator id inside older migrations. Those files have already run on any database that applied them. A later migration would have to rewrite the rows on purpose. No such migration is documented here because it does not exist.
+
 # source: https://chytr.ai/docs/features/dash
 
 # Dash
@@ -1169,6 +1688,8 @@ Forecast fields:
 
 Narrative fields on the deal are `deal_summary`, `deal_details`, `product_offering`, `strategic_questions`, and `next_steps`. `scorecard` is a JSON object. Agents write that pack with `deal_scorecard_set` (scope `deals:write`). People edit the same fields in the drawer.
 
+`lead_source` records the channel that produced the deal. It takes one of a fixed set of channel values, such as `outbound-email`, `x`, `referral-client`, `warm-intro`, `inbound-site`, or `partner`; see `deal_update` for the allowed list. It is optional and starts empty. Set it in the drawer, or with `deal_update` (scope `deals:write`). `deals_list` returns it and can filter on it (`lead_source: "none"` lists deals with no source yet). The Deals table shows it in the Source column.
+
 Line items are `deal_line_item_set` / `deal_line_items_list`, and in the app under the deal's line-item routes. Each line has a product, name, quantity, and unit amount.
 
 Creating or renaming a **product** files a human-only approval (`product_create`, `product_rename`). Updating other product fields can go through `product_upsert`. The catalog screen is [Products](/docs/features/products).
@@ -1191,6 +1712,7 @@ Deal cards can name `account_id` plus `end_customer_account_id`, `bill_to_accoun
 |---|---|---|
 | `deals_list` | `deals:read` | List deals, including forecast and scorecard fields |
 | `deal_scorecard_set` | `deals:write` | Write scorecard JSON and the narrative fields |
+| `deal_update` | `deals:write` | Set or clear `lead_source` |
 | `deal_line_items_list` | `deals:read` | Lines on a deal |
 | `deal_line_item_set` | `deals:write` | Upsert one line |
 | `deal_proposals` | `deals:read` | Proposed names that are not deals yet |
@@ -1396,7 +1918,7 @@ Expected result: a backlog task on that project. It does not wake a runtime unti
 
 Tasks are the unit of work on a board, so a person and an agent share one status line and one close rule.
 
-Open **Tasks** (`/tasks`). Statuses are `backlog`, `todo`, `doing`, `review`, `stuck`, `done`, and `cancelled`. A task belongs to a desk (a project) and can be assigned to a person or a runtime. Moving it to `todo` is what wakes a runtime. The board only calls the session API: it lists and patches, and the stage changes go through the same transitions the MCP tools use.
+Open **Tasks** (`/tasks`). Statuses are `backlog`, `todo`, `doing`, `qa` (shown as QA), `review`, `stuck`, `done`, and `cancelled`. A submitted task with a QA runtime set goes to QA first, then to `review`, then to the owner's close card. A task belongs to a desk (a project) and can be assigned to a person or a runtime. Moving it to `todo` is what wakes a runtime. The board only calls the session API: it lists and patches, and the stage changes go through the same transitions the MCP tools use.
 
 `human_approval_to_close` is the close gate. On means a person must accept a close card. Off, the default, means the assignee can finish it. Set the flag when you create the task. Words in the description do not change it.
 
@@ -2019,8 +2541,8 @@ No MCP tool administers this registry. After a routine inserts a `todo`, the age
 |---|---|---|
 | `task_claim` | `tasks:write` | Claim the `todo` the routine minted |
 | `task_pickup` | `tasks:write`, `comments:read` | Claim plus the handoff comments |
-| `task_scheduled_create` | `schedules:write` | A different object: a cron on a task. Token only |
-| `task_scheduled_enable` | `schedules:write` | Enable that scheduled task. Token only |
+| `task_scheduled_create` | `routines:write` | A different object: a cron on a task. Token only |
+| `task_scheduled_enable` | `routines:write` | Enable that scheduled task. Token only |
 
 ## HTTP endpoints
 
@@ -2033,7 +2555,7 @@ No MCP tool administers this registry. After a routine inserts a `todo`, the age
 
 ## Permissions
 
-Changing a routine requires an admin session. A personal access token cannot administer this screen. Task pickup still uses `tasks:write` from one permission-set layer. `schedules:write` is token-only and applies to scheduled tasks, not to this registry.
+Changing a routine requires an admin session. A personal access token cannot administer this screen. Task pickup still uses `tasks:write` from one permission-set layer. `routines:write` is token-only and applies to scheduled tasks, not to this registry. The older `schedules:write` scope no longer gates any scheduled-task tool.
 
 Row access is RLS by creator. Admins see all rows. Members see their own.
 
@@ -2134,6 +2656,14 @@ Expected result: the skill's title, summary, and markdown body when that slug ex
 Queues show whether work is waiting, running, or stuck, so you can repair the clock without reading a database.
 
 Open **Queues** (`/queue`). The panel is the tick snapshot: queue depth, in-progress leases, and recent ticks. From here you can repair the heartbeat cron (`bootstrap`) or dispatch a tick now (`run_now`). You can also enable or disable a job on the cron plane. Binding a routine to a runtime is saved through the jobs route.
+
+**Standalone installs: the agent heartbeat is not included.** The `ops-heartbeat` and `ops-dispatch` Edge Functions are not part of this release, so the controls above have no function behind them. In an install without them:
+
+- **Run now** (`run_now`) calls the `ops-heartbeat` Edge Function. The function is not deployed, so the call fails and the route returns HTTP 500 with a message that starts `ops-heartbeat` followed by the upstream status (expect a 404) and the error text. Nothing is dispatched.
+- **Repair** (`bootstrap`) runs a database function that registers the heartbeat job and a cron entry, then reports success. It does not check that the function exists. The cron entry fires on schedule and calls the missing function, so no tick runs. A success message from this action does not mean ticks are working.
+- The queue snapshot, job list, and enable or disable toggles are database reads and writes, so they still load. Expect empty depth and no recent ticks.
+
+Treat this screen as informational unless you deploy your own function under the same name.
 
 The screen only calls the session API. Agents do not administer the tick. They clock in when a task arrives. See [Work items](/docs/features/work-items) and [Routines](/docs/features/routines).
 
@@ -2615,7 +3145,7 @@ Older activity-matching filters (`metadata.filter`) still exist on the classic e
 
 ## Scheduled tasks
 
-`task_scheduled_create` and `task_scheduled_enable` (scope `schedules:write`, personal access token only) attach a cron schedule to a task, optionally pointing it at a workflow template. Enable it before the schedule fires. Routines under **Agents → Routines** are the other scheduler: a cron or instant job bound to a runtime. They are not workflow templates.
+`task_scheduled_create` and `task_scheduled_enable` (scope `routines:write`, personal access token only) attach a cron schedule to a task, optionally pointing it at a workflow template. Enable it before the schedule fires. Routines under **Agents → Routines** are the other scheduler: a cron or instant job bound to a runtime. They are not workflow templates.
 
 ## What is not in the product yet
 
@@ -3527,7 +4057,7 @@ Parameter lists are the fields callers actually send. Optional fields are includ
 | Tool | Scope | Purpose | Key parameters |
 |---|---|---|---|
 | `rag_search` | `rag:read` | Hybrid keyword and vector search over indexed chunks. | `query`, `match_count`, `source_tables`, `since`, `until` |
-| `entity_match_search` | `rag:read` | Resolve a person, company, or campaign name to candidates. Does not merge. | `query`, `limit`, `entity_types` |
+| `entity_match_search` | `rag:read` | Resolve a person, company, campaign, or task. Task matches need `entity_types` to include `task`. They compare title and description, and can be limited by desk, status, and recency. Done tasks stay searchable for 30 days. Does not merge. | `query`, `limit`, `entity_types`, `project_id`, `status`, `recency_days`, `done_window_days` |
 | `search` | `rag:read` | Scoped hybrid search with an intent router and optional dimension filters. | `query`, `match_count`, `offset`, `source_tables`, `domain_name`, `deal_name`, `project_name`, `skip_router` |
 | `entity_search_diag` | `rag:read` | Explain why a name did not resolve. | `canonical_name` |
 | `entity_context_query` | `rag:read` | Pack one entity's card, scoped chunks, and optional tasks and notes for a question. | `question`, `entity_type`, `entity_id` or `entity_name`, `include_tasks`, `include_activities`, `include_notes` |
@@ -3602,7 +4132,8 @@ List, bulk, and metrics filter `owner_user_id` to the caller. A router card's `o
 | Tool | Scope | Purpose | Key parameters |
 |---|---|---|---|
 | `deal_proposals` | `deals:read` | Proposed deal names from ingest that are not deals yet. | `limit` |
-| `deals_list` | `deals:read` | List deals, including forecast and scorecard fields. | `limit`, `status`, `closed`, `id`, `name` |
+| `deals_list` | `deals:read` | List deals, including forecast, lead source, and scorecard fields. | `limit`, `status`, `closed`, `id`, `name`, `lead_source` |
+| `deal_update` | `deals:write` | Set or clear a deal's `lead_source`. | `deal_id`, `lead_source` |
 | `deal_scorecard_set` | `deals:write` | Write the scorecard JSON and narrative fields. | `deal_id`, `scorecard`, `deal_summary`, `deal_details`, `product_offering`, `strategic_questions`, `next_steps` |
 | `deal_proposal_resolve` | `deals:write` | Approve or dismiss a proposed deal name. | `proposed_deal_name`, `approve`, `domain_id` |
 | `deal_line_item_set` | `deals:write` | Upsert one deal line item. | `deal_id`, `product_id`, `name`, `description`, `quantity`, `unit_amount`, `sort_order`, `id` |
@@ -3615,9 +4146,10 @@ List, bulk, and metrics filter `owner_user_id` to the caller. A router card's `o
 
 | Tool | Scope | Purpose | Key parameters |
 |---|---|---|---|
-| `task_create` | `tasks:write` | Create a backlog task. Set `human_approval_to_close` on purpose. Default is false. Takes a due date and links to an account, deal, campaign, or contacts. | `title`, `description`, `project_id`, `assignee_type`, `assignee_id`, `domain`, `human_approval_to_close`, `priority`, `hidden_until`, `due_date`, `account_id`, `deal_id`, `campaign_id`, `contact_ids`, `related_entities`, `links`, `tag_slugs` |
+| `task_create` | `tasks:write` | Create a backlog task. Set `human_approval_to_close` on purpose. Default is false. Takes a due date and links to an account, deal, campaign, or contacts. A near-duplicate open task on the same desk returns a warning. A strong title match blocks unless `allow_duplicate` and `duplicate_reason` are set. | `title`, `description`, `project_id`, `assignee_type`, `assignee_id`, `domain`, `human_approval_to_close`, `priority`, `hidden_until`, `due_date`, `account_id`, `deal_id`, `campaign_id`, `contact_ids`, `related_entities`, `links`, `tag_slugs`, `allow_duplicate`, `duplicate_reason` |
 | `task_list` | `tasks:read` | List tasks. Hidden tasks stay out unless `include_hidden` is true. | `domain`, `status`, `assignee_type`, `assignee_id`, `project_id`, `limit`, `include_hidden` |
 | `task_hide` | `tasks:write` | Set or clear `hidden_until`. | `task_id`, `hidden_until` |
+| `task_set_close_gate` | `tasks:write` | Set `human_approval_to_close` on an existing task. Raise-only for agents: `true` is open to any caller; `false` needs an admin session. Reason required; each change writes a task comment. | `task_id`, `value`, `reason`, `actor` |
 | `task_set_due` | `tasks:write` | Set or clear a task's `due_date`. `YYYY-MM-DD` means end of day America/Los_Angeles, or pass ISO-8601. Omit or null clears. | `task_id`, `due_date`, `actor` |
 | `task_claim` | `tasks:write` | Claim `todo` tasks for a runtime. | `assignee_id`, `claimed_by`, `limit` |
 | `task_claim_work_item` | `tasks:write` | Claim the one task a work item points at. | `work_item_id`, `claimed_by` |
@@ -3625,15 +4157,25 @@ List, bulk, and metrics filter `owner_user_id` to the caller. A router card's `o
 | `task_reassign` | `tasks:reassign` | Reassign to a runtime or user. Handoff comment required. | `task_id`, `assignee_type`, `assignee_id`, `handoff_note` |
 | `task_complete` | `tasks:write` | Complete a `todo` or `doing` task that is not close-gated. | `task_id`, `result` |
 | `task_stuck` | `tasks:write` | Mark a task stuck. | `task_id`, `reason` |
+| `task_review_verdict` | `tasks:write` | Pass or bounce a task in `qa` (QA runtime, the `verifier` field) or `review` (reviewer). QA runs before review: `qa` + pass moves it to `review` when a reviewer is set; the last stage's pass mints the close-ack card on a gated task. A bounce (note required) returns it to `doing` with a task comment and a Bus ping to the assignee; the resubmit goes back through QA. | `task_id`, `verdict`, `note`, `actor_type`, `actor_id` |
+| `task_move_to_verify` | `tasks:write` | Deprecated alias (the `verify` stage is now `qa`): passes a task in `qa` on to `review`, same as `task_review_verdict` with `verdict=pass`. | `task_id`, `note`, `actor_type`, `actor_id` |
 | `task_start` | `tasks:write` | Move `todo` to `doing`. | `task_id` |
 | `task_resume` | `tasks:write` | Move `stuck` to `todo`. Refuses unmet dependencies. | `task_ids`, `note` |
 | `task_demote` | `tasks:write` | Move `todo` back to `backlog`. | `task_id`, `note` |
 | `task_reopen` | `tasks:write` | Reopen a `done` task to an active status. | `task_id`, `to_status`, `note` |
 | `task_cancel` | `tasks:write` | Cancel from an active status. Reason required. | `task_id`, `reason` |
-| `task_request_promote` | `tasks:write` | Open a promote approval. | `task_ids`, `note`, `domain` |
+| `task_request_promote` | `tasks:write` | Open a promote approval. Warns on a near-duplicate task on the same desk and lists those matches on the card. A strong title match blocks unless `allow_duplicate` and `duplicate_reason` are set. | `task_ids`, `note`, `domain`, `allow_duplicate`, `duplicate_reason` |
 | `task_request_close` | `tasks:write` | Close. Human gate opens a card. Otherwise the task can complete, and a linked green pull request can merge. | `task_ids`, `note`, `pr_url`, `work_item_id`, `work_result` |
-| `task_scheduled_create` | `schedules:write` | Create or update a scheduled task. Token only. | `project_id`, `title`, `schedule_cron`, `scheduled_workflow_template_id`, `assignee_type`, `assignee_id` |
-| `task_scheduled_enable` | `schedules:write` | Enable a scheduled task and its job binding. Token only. | `task_id` |
+| `task_pr_check_complete` | `tasks:write` | Record a pass or fail check on a review subtask. Only the bound runtime can complete it. | `task_id`, `head_sha`, `verdict`, `evidence` |
+| `task_pr_gate_status` | `tasks:read` | Show the build task, pull request, current head and gate state for a review subtask. | `task_id` |
+| `api_token_bind_runtime` | `runtimes:bind` | Bind an API token, by its id and never its secret, to a review-check runtime. Writes only the token's runtime binding. Refuses revoked or already-bound tokens. Audited. | `token_id`, `runtime_id`, `note` |
+| `task_scheduled_list` | `tasks:read` | List routines (scheduled tasks) you own or administer. Hides soft-deleted rows unless asked. | `project_id`, `include_deleted` |
+| `task_scheduled_get` | `tasks:read` | Get one routine and its bound job. | `task_id` |
+| `task_scheduled_create` | `routines:write` | Create a scheduled task. Token only. Audited. | `project_id`, `title`, `schedule_cron`, `scheduled_workflow_template_id`, `assignee_type`, `assignee_id` |
+| `task_scheduled_update` | `routines:write` | Edit a scheduled task. Only keys you pass change. A cron change reaches the live job. Audited with before and after. | `task_id`, `title`, `description`, `schedule_cron`, `priority`, `project_id`, `scheduled_action`, `scheduled_workflow_template_id`, `scheduled_context_project_id`, `assignee_type`, `assignee_id`, `domain` |
+| `task_scheduled_disable` | `routines:write` | Stop a scheduled task and its job so nothing more is minted. Audited. | `task_id` |
+| `task_scheduled_enable` | `routines:write` | Enable a scheduled task and its job binding. Token only. Audited. | `task_id` |
+| `task_scheduled_delete` | `routines:write` | Soft-delete a scheduled task. Disables the job and cancels the task. Audited. | `task_id` |
 | `task_get` | `tasks:read` | Get one task with readiness, dependency edges, and parent. | `task` |
 | `task_update` | `tasks:write` | Update mutable task fields. Only keys you pass change. Cannot set status, `human_approval_to_close`, or assignee. Cycles in the parent are rejected. A `contact_ids` list replaces the linked contacts. | `task`, `title`, `description`, `priority`, `due_date`, `hidden_until`, `project_id`, `metadata`, `parent_task_id`, `account_id`, `deal_id`, `campaign_id`, `contact_ids`, `related_entities`, `actor` |
 | `task_dependency_set` | `tasks:write` | Create or update a dependency edge where the predecessor blocks the successor. Cycles are rejected. | `successor`, `predecessor`, `kind`, `require_predecessor_done`, `require_predecessor_merged`, `actor` |
@@ -3687,7 +4229,7 @@ List, bulk, and metrics filter `owner_user_id` to the caller. A router card's `o
 | `entity_graph_checkin` | `graph:write` | Check in entities for a lane without an activity. | `lane`, `run_id`, `entities`, `links`, `notes`, `flags` |
 | `graph_checkin` | `graph:write` | Deprecated alias of `meeting_graph_checkin`. | same as `meeting_graph_checkin` |
 | `graph_checkin_revert` | `graph:write` | Revert a check-in by run id. | `run_id` |
-| `resolve_meeting_desk` | `graph:write` | Pick the desk for meeting task proposals: calendar tag, then `meeting_desk_rules`, else CoS. Copy the returned `assignment` onto every `wiki_task_proposed` flag. | `activity_id`, `calendar_event_id`, `title`, `body`, `attendee_emails` |
+| `resolve_meeting_desk` | `graph:write` | Pick the desk for meeting task proposals: calendar tag, then `meeting_desk_rules`, else the default desk. Copy the returned `assignment` onto every `wiki_task_proposed` flag. | `activity_id`, `calendar_event_id`, `title`, `body`, `attendee_emails` |
 | `calendar_event_desk_tag_set` | `graph:write` | Set or remove the calendar desk tag on one `calendar_event` (`metadata.desk_project_id`), the tag `resolve_meeting_desk` reads first. Merges into metadata only: does not replace metadata or `raw_payload`, and does not write `activities.project_id`. Refuses a non-calendar row and an unknown or inactive project (`completed`, `paused`, `cancelled`). Setting the same project again returns `changed: false`. A tag this tool did not set (no agent provenance, or a `role=desk` link) stays unless `force` is true. `remove` clears the metadata tag; `force` also drops conflicting `role=desk` links. `actor` defaults to the caller. | `activity_id`, `project_id`, `reason`, `actor`, `remove`, `force` |
 
 ## Files and marketing assets
@@ -3705,6 +4247,7 @@ List, bulk, and metrics filter `owner_user_id` to the caller. A router card's `o
 | `marketing_asset_version_add` | `files:write` | Add a version that points at a committed file. | `asset_id`, `file_id`, `version`, `set_current` |
 | `marketing_asset_list` | `files:read` | List assets. | `kind`, `domain`, `campaign_id`, `project_id`, `limit` |
 | `marketing_asset_get` | `files:read` | One asset and its versions. | `asset_id` |
+| `marketing_media_publish` | `marketing:media:write` | Copy a committed file into the marketing-media bucket the social publishers read. Overwrites by default. | `file_id`, `dest_path`, `overwrite` |
 | `marketing_asset_set_current` | `files:write` | Point the asset at a version. | `asset_id`, `version` |
 
 ## Workflows
@@ -4064,7 +4607,7 @@ Three routes sit outside that prefix:
 | `POST` | `/api/mcp` | `Authorization: Bearer` with a `cbpat_…` token or a user JWT. Proxies to the MCP Edge Function |
 | `GET` | `/api/mcp` | Unauthenticated hint for OAuth metadata. Not a JSON-RPC call |
 | `GET` | `/.well-known/oauth-protected-resource` | Public resource metadata |
-| `POST` | `/api/v1/ingest` | `Authorization: Bearer` with `COCKPIT_INGEST_API_KEY`. Agent-hook log ingest. Unexpected failures still return HTTP 200 with `ok: false` |
+| `POST` | `/api/v1/ingest` | `Authorization: Bearer` with a personal access token that holds `agent_logs:write` (one per agent runtime). Agent-hook log ingest. Unexpected failures still return HTTP 200 with `ok: false` |
 | `POST` | `/api/gap-action` | Session. Files a pending approval for a calendar gap (`log-call`, `generate-brief`, `not-held`, `exclude`). Does not apply the action |
 
 ## Shell

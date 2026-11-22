@@ -1,6 +1,6 @@
 # chytr.ai — Logo Kit v1
 
-Open-source business OS for AI agents. Mark: a heavy white **c** with an orange **chyt** tile snapping into its opening, on a black rounded square.
+Source-available business OS for AI agents. Mark: a heavy white **c** with an orange **chyt** tile snapping into its opening, on a black rounded square.
 
 ## Contents
 | Path | What |

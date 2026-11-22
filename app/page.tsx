@@ -1,7 +1,7 @@
 import { SiteHeader } from "@/components/SiteHeader"
 import { WAITLIST_URL } from "@/lib/site"
 
-// DRAFT COPY for Mark and Joe: every string on this page is a working draft, not approved.
+// DRAFT COPY for review: every string on this page is a working draft, not approved.
 
 const PILLARS = [
   {
@@ -28,7 +28,7 @@ const DIAGRAMS = [
   {
     file: "chytr-diagram-B-trigger-layer-dark.svg",
     title: "Bring your own agents",
-    alt: "Layer diagram: Claude, Cursor, Codex and Grok runtimes feed the open-source chytr trigger layer, which drives seven business flywheels.",
+    alt: "Layer diagram: Claude, Cursor, Codex and Grok runtimes feed the chytr trigger layer, which drives seven business flywheels.",
     caption: "Claude, Cursor, Codex, Grok or your own. Agents are swappable; the record and the gates stay yours.",
   },
   {
@@ -47,7 +47,7 @@ export default function Home() {
         <section className="mx-auto max-w-6xl px-4 pb-16 pt-20 sm:px-6 sm:pt-28">
           <p className="mb-5 font-mono text-sm text-muted-foreground">
             <span className="mr-2 inline-block h-2.5 w-2.5 bg-chyt align-baseline" aria-hidden />
-            Open-source business OS for AI agents
+            Source-available business OS for AI agents
           </p>
           <h1 className="max-w-4xl text-4xl font-semibold leading-[1.05] tracking-tight sm:text-6xl">
             Every AI action has a receipt.
@@ -133,19 +133,19 @@ export default function Home() {
         <section className="border-t border-border">
           <div className="mx-auto grid max-w-6xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-2">
             <div>
-              <h2 className="font-mono text-sm uppercase tracking-widest text-muted-foreground">Open source, self-host</h2>
+              <h2 className="font-mono text-sm uppercase tracking-widest text-muted-foreground">Source-available, self-host</h2>
               <h3 className="mt-4 text-3xl font-semibold tracking-tight">Your data, your server, your rules.</h3>
             </div>
             <div className="space-y-4 text-lg text-muted-foreground">
               <p>
-                chytr is open source under a Sustainable Use License. Run it yourself, read the code, and bring the agents
-                you already use.
+                chytr is source-available under the Functional Source License (FSL-1.1-ALv2); each release becomes
+                Apache 2.0 after two years. Run it yourself, read the code, and bring the agents you already use.
               </p>
               <p>
                 Self-hosting is free. There is no platform fee on your existing subscriptions. An optional Stripe module
                 is there if you want billing built in.
               </p>
-              <p><a href="/docs" className="text-foreground underline underline-offset-4">Self-hosting guide in the docs</a></p>
+              <p><a href="/docs/self-host/requirements" className="text-foreground underline underline-offset-4">Self-hosting guide in the docs</a></p>
             </div>
           </div>
         </section>

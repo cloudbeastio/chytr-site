@@ -50,6 +50,8 @@ Forecast fields:
 
 Narrative fields on the deal are `deal_summary`, `deal_details`, `product_offering`, `strategic_questions`, and `next_steps`. `scorecard` is a JSON object. Agents write that pack with `deal_scorecard_set` (scope `deals:write`). People edit the same fields in the drawer.
 
+`lead_source` records the channel that produced the deal. It takes one of a fixed set of channel values, such as `outbound-email`, `x`, `referral-client`, `warm-intro`, `inbound-site`, or `partner`; see `deal_update` for the allowed list. It is optional and starts empty. Set it in the drawer, or with `deal_update` (scope `deals:write`). `deals_list` returns it and can filter on it (`lead_source: "none"` lists deals with no source yet). The Deals table shows it in the Source column.
+
 Line items are `deal_line_item_set` / `deal_line_items_list`, and in the app under the deal's line-item routes. Each line has a product, name, quantity, and unit amount.
 
 Creating or renaming a **product** files a human-only approval (`product_create`, `product_rename`). Updating other product fields can go through `product_upsert`. The catalog screen is [Products](/docs/features/products).
@@ -72,6 +74,7 @@ Deal cards can name `account_id` plus `end_customer_account_id`, `bill_to_accoun
 |---|---|---|
 | `deals_list` | `deals:read` | List deals, including forecast and scorecard fields |
 | `deal_scorecard_set` | `deals:write` | Write scorecard JSON and the narrative fields |
+| `deal_update` | `deals:write` | Set or clear `lead_source` |
 | `deal_line_items_list` | `deals:read` | Lines on a deal |
 | `deal_line_item_set` | `deals:write` | Upsert one line |
 | `deal_proposals` | `deals:read` | Proposed names that are not deals yet |

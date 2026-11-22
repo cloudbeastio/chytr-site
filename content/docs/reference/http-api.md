@@ -23,7 +23,7 @@ Three routes sit outside that prefix:
 | `POST` | `/api/mcp` | `Authorization: Bearer` with a `cbpat_…` token or a user JWT. Proxies to the MCP Edge Function |
 | `GET` | `/api/mcp` | Unauthenticated hint for OAuth metadata. Not a JSON-RPC call |
 | `GET` | `/.well-known/oauth-protected-resource` | Public resource metadata |
-| `POST` | `/api/v1/ingest` | `Authorization: Bearer` with `COCKPIT_INGEST_API_KEY`. Agent-hook log ingest. Unexpected failures still return HTTP 200 with `ok: false` |
+| `POST` | `/api/v1/ingest` | `Authorization: Bearer` with a personal access token that holds `agent_logs:write` (one per agent runtime). Agent-hook log ingest. Unexpected failures still return HTTP 200 with `ok: false` |
 | `POST` | `/api/gap-action` | Session. Files a pending approval for a calendar gap (`log-call`, `generate-brief`, `not-held`, `exclude`). Does not apply the action |
 
 ## Shell

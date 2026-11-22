@@ -23,7 +23,7 @@ Parameter lists are the fields callers actually send. Optional fields are includ
 | Tool | Scope | Purpose | Key parameters |
 |---|---|---|---|
 | `rag_search` | `rag:read` | Hybrid keyword and vector search over indexed chunks. | `query`, `match_count`, `source_tables`, `since`, `until` |
-| `entity_match_search` | `rag:read` | Resolve a person, company, or campaign name to candidates. Does not merge. | `query`, `limit`, `entity_types` |
+| `entity_match_search` | `rag:read` | Resolve a person, company, campaign, or task. Task matches need `entity_types` to include `task`. They compare title and description, and can be limited by desk, status, and recency. Done tasks stay searchable for 30 days. Does not merge. | `query`, `limit`, `entity_types`, `project_id`, `status`, `recency_days`, `done_window_days` |
 | `search` | `rag:read` | Scoped hybrid search with an intent router and optional dimension filters. | `query`, `match_count`, `offset`, `source_tables`, `domain_name`, `deal_name`, `project_name`, `skip_router` |
 | `entity_search_diag` | `rag:read` | Explain why a name did not resolve. | `canonical_name` |
 | `entity_context_query` | `rag:read` | Pack one entity's card, scoped chunks, and optional tasks and notes for a question. | `question`, `entity_type`, `entity_id` or `entity_name`, `include_tasks`, `include_activities`, `include_notes` |
@@ -98,7 +98,8 @@ List, bulk, and metrics filter `owner_user_id` to the caller. A router card's `o
 | Tool | Scope | Purpose | Key parameters |
 |---|---|---|---|
 | `deal_proposals` | `deals:read` | Proposed deal names from ingest that are not deals yet. | `limit` |
-| `deals_list` | `deals:read` | List deals, including forecast and scorecard fields. | `limit`, `status`, `closed`, `id`, `name` |
+| `deals_list` | `deals:read` | List deals, including forecast, lead source, and scorecard fields. | `limit`, `status`, `closed`, `id`, `name`, `lead_source` |
+| `deal_update` | `deals:write` | Set or clear a deal's `lead_source`. | `deal_id`, `lead_source` |
 | `deal_scorecard_set` | `deals:write` | Write the scorecard JSON and narrative fields. | `deal_id`, `scorecard`, `deal_summary`, `deal_details`, `product_offering`, `strategic_questions`, `next_steps` |
 | `deal_proposal_resolve` | `deals:write` | Approve or dismiss a proposed deal name. | `proposed_deal_name`, `approve`, `domain_id` |
 | `deal_line_item_set` | `deals:write` | Upsert one deal line item. | `deal_id`, `product_id`, `name`, `description`, `quantity`, `unit_amount`, `sort_order`, `id` |
@@ -111,9 +112,10 @@ List, bulk, and metrics filter `owner_user_id` to the caller. A router card's `o
 
 | Tool | Scope | Purpose | Key parameters |
 |---|---|---|---|
-| `task_create` | `tasks:write` | Create a backlog task. Set `human_approval_to_close` on purpose. Default is false. Takes a due date and links to an account, deal, campaign, or contacts. | `title`, `description`, `project_id`, `assignee_type`, `assignee_id`, `domain`, `human_approval_to_close`, `priority`, `hidden_until`, `due_date`, `account_id`, `deal_id`, `campaign_id`, `contact_ids`, `related_entities`, `links`, `tag_slugs` |
+| `task_create` | `tasks:write` | Create a backlog task. Set `human_approval_to_close` on purpose. Default is false. Takes a due date and links to an account, deal, campaign, or contacts. A near-duplicate open task on the same desk returns a warning. A strong title match blocks unless `allow_duplicate` and `duplicate_reason` are set. | `title`, `description`, `project_id`, `assignee_type`, `assignee_id`, `domain`, `human_approval_to_close`, `priority`, `hidden_until`, `due_date`, `account_id`, `deal_id`, `campaign_id`, `contact_ids`, `related_entities`, `links`, `tag_slugs`, `allow_duplicate`, `duplicate_reason` |
 | `task_list` | `tasks:read` | List tasks. Hidden tasks stay out unless `include_hidden` is true. | `domain`, `status`, `assignee_type`, `assignee_id`, `project_id`, `limit`, `include_hidden` |
 | `task_hide` | `tasks:write` | Set or clear `hidden_until`. | `task_id`, `hidden_until` |
+| `task_set_close_gate` | `tasks:write` | Set `human_approval_to_close` on an existing task. Raise-only for agents: `true` is open to any caller; `false` needs an admin session. Reason required; each change writes a task comment. | `task_id`, `value`, `reason`, `actor` |
 | `task_set_due` | `tasks:write` | Set or clear a task's `due_date`. `YYYY-MM-DD` means end of day America/Los_Angeles, or pass ISO-8601. Omit or null clears. | `task_id`, `due_date`, `actor` |
 | `task_claim` | `tasks:write` | Claim `todo` tasks for a runtime. | `assignee_id`, `claimed_by`, `limit` |
 | `task_claim_work_item` | `tasks:write` | Claim the one task a work item points at. | `work_item_id`, `claimed_by` |
@@ -121,15 +123,25 @@ List, bulk, and metrics filter `owner_user_id` to the caller. A router card's `o
 | `task_reassign` | `tasks:reassign` | Reassign to a runtime or user. Handoff comment required. | `task_id`, `assignee_type`, `assignee_id`, `handoff_note` |
 | `task_complete` | `tasks:write` | Complete a `todo` or `doing` task that is not close-gated. | `task_id`, `result` |
 | `task_stuck` | `tasks:write` | Mark a task stuck. | `task_id`, `reason` |
+| `task_review_verdict` | `tasks:write` | Pass or bounce a task in `qa` (QA runtime, the `verifier` field) or `review` (reviewer). QA runs before review: `qa` + pass moves it to `review` when a reviewer is set; the last stage's pass mints the close-ack card on a gated task. A bounce (note required) returns it to `doing` with a task comment and a Bus ping to the assignee; the resubmit goes back through QA. | `task_id`, `verdict`, `note`, `actor_type`, `actor_id` |
+| `task_move_to_verify` | `tasks:write` | Deprecated alias (the `verify` stage is now `qa`): passes a task in `qa` on to `review`, same as `task_review_verdict` with `verdict=pass`. | `task_id`, `note`, `actor_type`, `actor_id` |
 | `task_start` | `tasks:write` | Move `todo` to `doing`. | `task_id` |
 | `task_resume` | `tasks:write` | Move `stuck` to `todo`. Refuses unmet dependencies. | `task_ids`, `note` |
 | `task_demote` | `tasks:write` | Move `todo` back to `backlog`. | `task_id`, `note` |
 | `task_reopen` | `tasks:write` | Reopen a `done` task to an active status. | `task_id`, `to_status`, `note` |
 | `task_cancel` | `tasks:write` | Cancel from an active status. Reason required. | `task_id`, `reason` |
-| `task_request_promote` | `tasks:write` | Open a promote approval. | `task_ids`, `note`, `domain` |
+| `task_request_promote` | `tasks:write` | Open a promote approval. Warns on a near-duplicate task on the same desk and lists those matches on the card. A strong title match blocks unless `allow_duplicate` and `duplicate_reason` are set. | `task_ids`, `note`, `domain`, `allow_duplicate`, `duplicate_reason` |
 | `task_request_close` | `tasks:write` | Close. Human gate opens a card. Otherwise the task can complete, and a linked green pull request can merge. | `task_ids`, `note`, `pr_url`, `work_item_id`, `work_result` |
-| `task_scheduled_create` | `schedules:write` | Create or update a scheduled task. Token only. | `project_id`, `title`, `schedule_cron`, `scheduled_workflow_template_id`, `assignee_type`, `assignee_id` |
-| `task_scheduled_enable` | `schedules:write` | Enable a scheduled task and its job binding. Token only. | `task_id` |
+| `task_pr_check_complete` | `tasks:write` | Record a pass or fail check on a review subtask. Only the bound runtime can complete it. | `task_id`, `head_sha`, `verdict`, `evidence` |
+| `task_pr_gate_status` | `tasks:read` | Show the build task, pull request, current head and gate state for a review subtask. | `task_id` |
+| `api_token_bind_runtime` | `runtimes:bind` | Bind an API token, by its id and never its secret, to a review-check runtime. Writes only the token's runtime binding. Refuses revoked or already-bound tokens. Audited. | `token_id`, `runtime_id`, `note` |
+| `task_scheduled_list` | `tasks:read` | List routines (scheduled tasks) you own or administer. Hides soft-deleted rows unless asked. | `project_id`, `include_deleted` |
+| `task_scheduled_get` | `tasks:read` | Get one routine and its bound job. | `task_id` |
+| `task_scheduled_create` | `routines:write` | Create a scheduled task. Token only. Audited. | `project_id`, `title`, `schedule_cron`, `scheduled_workflow_template_id`, `assignee_type`, `assignee_id` |
+| `task_scheduled_update` | `routines:write` | Edit a scheduled task. Only keys you pass change. A cron change reaches the live job. Audited with before and after. | `task_id`, `title`, `description`, `schedule_cron`, `priority`, `project_id`, `scheduled_action`, `scheduled_workflow_template_id`, `scheduled_context_project_id`, `assignee_type`, `assignee_id`, `domain` |
+| `task_scheduled_disable` | `routines:write` | Stop a scheduled task and its job so nothing more is minted. Audited. | `task_id` |
+| `task_scheduled_enable` | `routines:write` | Enable a scheduled task and its job binding. Token only. Audited. | `task_id` |
+| `task_scheduled_delete` | `routines:write` | Soft-delete a scheduled task. Disables the job and cancels the task. Audited. | `task_id` |
 | `task_get` | `tasks:read` | Get one task with readiness, dependency edges, and parent. | `task` |
 | `task_update` | `tasks:write` | Update mutable task fields. Only keys you pass change. Cannot set status, `human_approval_to_close`, or assignee. Cycles in the parent are rejected. A `contact_ids` list replaces the linked contacts. | `task`, `title`, `description`, `priority`, `due_date`, `hidden_until`, `project_id`, `metadata`, `parent_task_id`, `account_id`, `deal_id`, `campaign_id`, `contact_ids`, `related_entities`, `actor` |
 | `task_dependency_set` | `tasks:write` | Create or update a dependency edge where the predecessor blocks the successor. Cycles are rejected. | `successor`, `predecessor`, `kind`, `require_predecessor_done`, `require_predecessor_merged`, `actor` |
@@ -183,7 +195,7 @@ List, bulk, and metrics filter `owner_user_id` to the caller. A router card's `o
 | `entity_graph_checkin` | `graph:write` | Check in entities for a lane without an activity. | `lane`, `run_id`, `entities`, `links`, `notes`, `flags` |
 | `graph_checkin` | `graph:write` | Deprecated alias of `meeting_graph_checkin`. | same as `meeting_graph_checkin` |
 | `graph_checkin_revert` | `graph:write` | Revert a check-in by run id. | `run_id` |
-| `resolve_meeting_desk` | `graph:write` | Pick the desk for meeting task proposals: calendar tag, then `meeting_desk_rules`, else CoS. Copy the returned `assignment` onto every `wiki_task_proposed` flag. | `activity_id`, `calendar_event_id`, `title`, `body`, `attendee_emails` |
+| `resolve_meeting_desk` | `graph:write` | Pick the desk for meeting task proposals: calendar tag, then `meeting_desk_rules`, else the default desk. Copy the returned `assignment` onto every `wiki_task_proposed` flag. | `activity_id`, `calendar_event_id`, `title`, `body`, `attendee_emails` |
 | `calendar_event_desk_tag_set` | `graph:write` | Set or remove the calendar desk tag on one `calendar_event` (`metadata.desk_project_id`), the tag `resolve_meeting_desk` reads first. Merges into metadata only: does not replace metadata or `raw_payload`, and does not write `activities.project_id`. Refuses a non-calendar row and an unknown or inactive project (`completed`, `paused`, `cancelled`). Setting the same project again returns `changed: false`. A tag this tool did not set (no agent provenance, or a `role=desk` link) stays unless `force` is true. `remove` clears the metadata tag; `force` also drops conflicting `role=desk` links. `actor` defaults to the caller. | `activity_id`, `project_id`, `reason`, `actor`, `remove`, `force` |
 
 ## Files and marketing assets
@@ -201,6 +213,7 @@ List, bulk, and metrics filter `owner_user_id` to the caller. A router card's `o
 | `marketing_asset_version_add` | `files:write` | Add a version that points at a committed file. | `asset_id`, `file_id`, `version`, `set_current` |
 | `marketing_asset_list` | `files:read` | List assets. | `kind`, `domain`, `campaign_id`, `project_id`, `limit` |
 | `marketing_asset_get` | `files:read` | One asset and its versions. | `asset_id` |
+| `marketing_media_publish` | `marketing:media:write` | Copy a committed file into the marketing-media bucket the social publishers read. Overwrites by default. | `file_id`, `dest_path`, `overwrite` |
 | `marketing_asset_set_current` | `files:write` | Point the asset at a version. | `asset_id`, `version` |
 
 ## Workflows

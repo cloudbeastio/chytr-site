@@ -45,7 +45,7 @@ Older activity-matching filters (`metadata.filter`) still exist on the classic e
 
 ## Scheduled tasks
 
-`task_scheduled_create` and `task_scheduled_enable` (scope `schedules:write`, personal access token only) attach a cron schedule to a task, optionally pointing it at a workflow template. Enable it before the schedule fires. Routines under **Agents → Routines** are the other scheduler: a cron or instant job bound to a runtime. They are not workflow templates.
+`task_scheduled_create` and `task_scheduled_enable` (scope `routines:write`, personal access token only) attach a cron schedule to a task, optionally pointing it at a workflow template. Enable it before the schedule fires. Routines under **Agents → Routines** are the other scheduler: a cron or instant job bound to a runtime. They are not workflow templates.
 
 ## What is not in the product yet
 

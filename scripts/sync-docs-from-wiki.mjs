@@ -6,14 +6,15 @@
  *
  * Source: <wiki>/docs/public/cockpit/
  * Writes ONLY content/docs/** and public/docs/llms*.txt.
- * Applies the rename (Cockpit -> chytr, /docs/cockpit -> /docs), skips the
- * self-host section (preview-only, not published yet), and fails the sync if
- * any private data survives the transform. Never writes landing-page files.
+ * Applies the rename (Cockpit -> chytr, /docs/cockpit -> /docs), publishes the
+ * self-host install section (a preview in the source, live on this site), and
+ * fails the sync if any private data survives the transform. Never writes
+ * landing-page files.
  */
 import { cp, mkdir, readFile, readdir, rm, stat, writeFile, access } from "node:fs/promises"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
-import { findPrivateData, renameText, transformNav } from "./lib/docs-transform.mjs"
+import { SITE_PUBLISHED_SECTIONS, findPrivateData, publishFrontmatter, renameText, transformNav } from "./lib/docs-transform.mjs"
 
 const SITE_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
 const DEST = path.join(SITE_ROOT, "content", "docs")
@@ -21,7 +22,6 @@ const DEST_PUBLIC = path.join(SITE_ROOT, "public", "docs")
 const WIKI_ROOT =
   process.argv[2] || process.env.CB_WIKI_REPO_PATH || path.resolve(SITE_ROOT, "..", "cb-wiki-2")
 const SRC = path.join(WIKI_ROOT, "docs", "public", "cockpit")
-const SKIP_SECTIONS = new Set(["self-host"])
 const SKIP_FILES = new Set(["README.md", "llms.txt", "llms-full.txt"])
 
 async function walk(dir) {
@@ -47,9 +47,10 @@ async function main() {
   for (const file of await walk(SRC)) {
     const rel = path.relative(SRC, file)
     const [top] = rel.split(path.sep)
-    if (SKIP_SECTIONS.has(top) || SKIP_FILES.has(path.basename(rel))) continue
+    if (SKIP_FILES.has(path.basename(rel))) continue
     let text = await readFile(file, "utf8")
     text = path.basename(rel) === "_nav.json" ? transformNav(text) : renameText(text)
+    if (SITE_PUBLISHED_SECTIONS.has(top) && rel.endsWith(".md")) text = publishFrontmatter(text)
     for (const hit of findPrivateData(text)) problems.push(`${rel}: ${hit.name} "${hit.match}"`)
     const dest = path.join(DEST, rel)
     await mkdir(path.dirname(dest), { recursive: true })
@@ -58,7 +59,7 @@ async function main() {
   }
 
   // Agent indexes: regenerate from the published pages rather than copy the wiki's
-  // (those list self-host-adjacent and cloudbeast.io URLs).
+  // (those carry the source site's URLs).
   await mkdir(DEST_PUBLIC, { recursive: true })
   const nav = JSON.parse(await readFile(path.join(DEST, "_nav.json"), "utf8"))
   const index = ["# chytr docs", ""]
@@ -86,7 +87,7 @@ async function main() {
     console.error("private data survived the scrub:\n" + problems.join("\n"))
     process.exit(1)
   }
-  console.log(`synced ${written.length} files → content/docs, public/docs/llms*.txt (self-host skipped)`)
+  console.log(`synced ${written.length} files → content/docs, public/docs/llms*.txt`)
 }
 
 main().catch((err) => {

@@ -1,7 +1,7 @@
 import { SiteHeader } from "@/components/SiteHeader"
 import { WAITLIST_URL } from "@/lib/site"
 
-// DRAFT COPY for Mark and Joe: every string on this page is a working draft, not approved.
+// DRAFT COPY for review: every string on this page is a working draft, not approved.
 
 const PILLARS = [
   {

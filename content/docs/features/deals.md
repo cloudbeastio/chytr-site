@@ -50,7 +50,7 @@ Forecast fields:
 
 Narrative fields on the deal are `deal_summary`, `deal_details`, `product_offering`, `strategic_questions`, and `next_steps`. `scorecard` is a JSON object. Agents write that pack with `deal_scorecard_set` (scope `deals:write`). People edit the same fields in the drawer.
 
-`lead_source` records the channel that produced the deal: `outbound-email`, `x`, `referral-client`, `warm-intro`, `joe-network`, `inbound-site`, or `partner`. It is optional and starts empty. Set it in the drawer, or with `deal_update` (scope `deals:write`). `deals_list` returns it and can filter on it (`lead_source: "none"` lists deals with no source yet). The Deals table shows it in the Source column.
+`lead_source` records the channel that produced the deal. It takes one of a fixed set of channel values, such as `outbound-email`, `x`, `referral-client`, `warm-intro`, `inbound-site`, or `partner`; see `deal_update` for the allowed list. It is optional and starts empty. Set it in the drawer, or with `deal_update` (scope `deals:write`). `deals_list` returns it and can filter on it (`lead_source: "none"` lists deals with no source yet). The Deals table shows it in the Source column.
 
 Line items are `deal_line_item_set` / `deal_line_items_list`, and in the app under the deal's line-item routes. Each line has a product, name, quantity, and unit amount.
 

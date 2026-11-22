@@ -14,7 +14,7 @@ unlisted: false
 
 Tasks are the unit of work on a board, so a person and an agent share one status line and one close rule.
 
-Open **Tasks** (`/tasks`). Statuses are `backlog`, `todo`, `doing`, `qa` (shown as QA), `review`, `stuck`, `done`, and `cancelled`. A submitted task with a QA runtime set goes to QA first, then to `review`, then to Joe's close card. A task belongs to a desk (a project) and can be assigned to a person or a runtime. Moving it to `todo` is what wakes a runtime. The board only calls the session API: it lists and patches, and the stage changes go through the same transitions the MCP tools use.
+Open **Tasks** (`/tasks`). Statuses are `backlog`, `todo`, `doing`, `qa` (shown as QA), `review`, `stuck`, `done`, and `cancelled`. A submitted task with a QA runtime set goes to QA first, then to `review`, then to the owner's close card. A task belongs to a desk (a project) and can be assigned to a person or a runtime. Moving it to `todo` is what wakes a runtime. The board only calls the session API: it lists and patches, and the stage changes go through the same transitions the MCP tools use.
 
 `human_approval_to_close` is the close gate. On means a person must accept a close card. Off, the default, means the assignee can finish it. Set the flag when you create the task. Words in the description do not change it.
 

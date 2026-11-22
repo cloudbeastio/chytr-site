@@ -10,7 +10,7 @@ unlisted: false
 
 # First user
 
-> **Preview.** Self-hosting chytr is not verified on a clean stack. Migrations still contain a fixed operator user, the Supabase config is pinned to one project, and there is no owner bootstrap. This page describes the intended flow. Do not treat it as a supported install.
+> **Preview.** Self-hosting chytr is not yet verified on a clean stack. `supabase/config.toml` ships placeholders (`project_id = "your-project-ref"`, a placeholder `site_url`, example redirect URLs) that you replace with your own project's values. The baseline still refers to a fixed placeholder owner id in some functions (see [Database and Edge Functions](/docs/self-host/database)), and `public.bootstrap_owner` claims a fresh install for its first owner. This page describes the intended flow. Do not treat it as a supported install.
 
 The login form will not create your user. `shouldCreateUser` is false. You create the user first, then sign in with a one-time code.
 

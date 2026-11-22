@@ -148,7 +148,7 @@ The top bar search matches tasks, accounts, contacts, and deals by name after tw
 
 # Requirements
 
-> **Preview.** Self-hosting chytr is not verified on a clean stack. Migrations still contain a fixed operator user, the Supabase config is pinned to one project, and there is no owner bootstrap. This page describes the intended flow. Do not treat it as a supported install.
+> **Preview.** Self-hosting chytr is not yet verified on a clean stack. `supabase/config.toml` ships placeholders (`project_id = "your-project-ref"`, a placeholder `site_url`, example redirect URLs) that you replace with your own project's values. The baseline still refers to a fixed placeholder owner id in some functions (see [Database and Edge Functions](/docs/self-host/database)), and `public.bootstrap_owner` claims a fresh install for its first owner. This page describes the intended flow. Do not treat it as a supported install.
 
 You bring the database and the app host. chytr does not ship as a managed service.
 
@@ -198,19 +198,19 @@ Not yet verified: the minimum Supabase credentials a new operator needs. Expect 
 
 # Database and Edge Functions
 
-> **Preview.** Self-hosting chytr is not verified on a clean stack. Migrations still contain a fixed operator user, the Supabase config is pinned to one project, and there is no owner bootstrap. This page describes the intended flow. Do not treat it as a supported install.
+> **Preview.** Self-hosting chytr is not yet verified on a clean stack. `supabase/config.toml` ships placeholders (`project_id = "your-project-ref"`, a placeholder `site_url`, example redirect URLs) that you replace with your own project's values. The baseline still refers to a fixed placeholder owner id in some functions (see [Database and Edge Functions](/docs/self-host/database)), and `public.bootstrap_owner` claims a fresh install for its first owner. This page describes the intended flow. Do not treat it as a supported install.
 
 Apply the database before you deploy the app. The app calls RPCs that the migrations define.
 
 ## Link your project
 
-From the repo root, point the CLI at the project you created. Do not use the `project_id` committed in `supabase/config.toml`.
+From the repo root, point the CLI at the project you created. `supabase/config.toml` ships the placeholder `project_id = "your-project-ref"`; replace it with your project ref, or leave it and link explicitly:
 
 ```bash
 supabase link --project-ref <your-project-ref>
 ```
 
-Not yet verified on a fresh project: `supabase/config.toml` still contains a pinned `project_id` from another deployment. Always pass `--project-ref` explicitly, and before you push anything, check which project the CLI is linked to (`supabase projects list` marks the linked one).
+Always pass `--project-ref` with your own ref. Before you push anything, check which project the CLI is linked to (`supabase projects list` marks the linked one). Linking on a fresh project has not yet been rehearsed end to end.
 
 ## Apply migrations
 
@@ -463,7 +463,7 @@ The chytr log drain is not included. Its ingest function does not ship.
 
 # App and environment
 
-> **Preview.** Self-hosting chytr is not verified on a clean stack. Migrations still contain a fixed operator user, the Supabase config is pinned to one project, and there is no owner bootstrap. This page describes the intended flow. Do not treat it as a supported install.
+> **Preview.** Self-hosting chytr is not yet verified on a clean stack. `supabase/config.toml` ships placeholders (`project_id = "your-project-ref"`, a placeholder `site_url`, example redirect URLs) that you replace with your own project's values. The baseline still refers to a fixed placeholder owner id in some functions (see [Database and Edge Functions](/docs/self-host/database)), and `public.bootstrap_owner` claims a fresh install for its first owner. This page describes the intended flow. Do not treat it as a supported install.
 
 The app lives in `apps/cockpit`. It is a Next.js app. The browser talks to `/cockpit/api` on the same host. That API uses the signed-in user's Supabase session.
 
@@ -534,7 +534,7 @@ content_path = "./supabase/templates/magic_link.html"
 
 MCP OAuth consent is a different URL. `supabase/config.toml` points the OAuth server authorization path at the `auth-pages` Edge Function, not at chytr `/login`.
 
-Do not copy `site_url` or the redirect list from the committed `supabase/config.toml`; they describe another deployment. In your project's Auth URL settings, set the Site URL to your app's public origin and add `<your-app-origin>/login` to the redirect allowlist. The exact dashboard click-path has not been rechecked against the current Supabase UI.
+`supabase/config.toml` ships placeholders: a `site_url` built on the `your-project-ref` placeholder host, and example redirect URLs on `chytr.example.com`. Replace them with your own values, keeping the rule above: Site URL is your project's API host (`https://<your-project-ref>.supabase.co`), and `<your-app-origin>/login` goes in Redirect URLs. The exact dashboard click-path has not been rechecked against the current Supabase UI.
 
 ## Sign-in form
 
@@ -544,7 +544,7 @@ The login page is email plus a one-time code. The email field starts empty.
 
 # First user
 
-> **Preview.** Self-hosting chytr is not verified on a clean stack. Migrations still contain a fixed operator user, the Supabase config is pinned to one project, and there is no owner bootstrap. This page describes the intended flow. Do not treat it as a supported install.
+> **Preview.** Self-hosting chytr is not yet verified on a clean stack. `supabase/config.toml` ships placeholders (`project_id = "your-project-ref"`, a placeholder `site_url`, example redirect URLs) that you replace with your own project's values. The baseline still refers to a fixed placeholder owner id in some functions (see [Database and Edge Functions](/docs/self-host/database)), and `public.bootstrap_owner` claims a fresh install for its first owner. This page describes the intended flow. Do not treat it as a supported install.
 
 The login form will not create your user. `shouldCreateUser` is false. You create the user first, then sign in with a one-time code.
 
@@ -627,7 +627,7 @@ Re-run the four-step check once the baseline ships domains and owner-aware proje
 
 # Upgrading
 
-> **Preview.** Self-hosting chytr is not verified on a clean stack. Migrations still contain a fixed operator user, the Supabase config is pinned to one project, and there is no owner bootstrap. This page describes the intended flow. Do not treat it as a supported install.
+> **Preview.** Self-hosting chytr is not yet verified on a clean stack. `supabase/config.toml` ships placeholders (`project_id = "your-project-ref"`, a placeholder `site_url`, example redirect URLs) that you replace with your own project's values. The baseline still refers to a fixed placeholder owner id in some functions (see [Database and Edge Functions](/docs/self-host/database)), and `public.bootstrap_owner` claims a fresh install for its first owner. This page describes the intended flow. Do not treat it as a supported install.
 
 The app and the database version together. Migrate the database before you deploy a newer app. An app build can call RPCs that the previous schema does not have.
 
@@ -1688,7 +1688,7 @@ Forecast fields:
 
 Narrative fields on the deal are `deal_summary`, `deal_details`, `product_offering`, `strategic_questions`, and `next_steps`. `scorecard` is a JSON object. Agents write that pack with `deal_scorecard_set` (scope `deals:write`). People edit the same fields in the drawer.
 
-`lead_source` records the channel that produced the deal: `outbound-email`, `x`, `referral-client`, `warm-intro`, `joe-network`, `inbound-site`, or `partner`. It is optional and starts empty. Set it in the drawer, or with `deal_update` (scope `deals:write`). `deals_list` returns it and can filter on it (`lead_source: "none"` lists deals with no source yet). The Deals table shows it in the Source column.
+`lead_source` records the channel that produced the deal. It takes one of a fixed set of channel values, such as `outbound-email`, `x`, `referral-client`, `warm-intro`, `inbound-site`, or `partner`; see `deal_update` for the allowed list. It is optional and starts empty. Set it in the drawer, or with `deal_update` (scope `deals:write`). `deals_list` returns it and can filter on it (`lead_source: "none"` lists deals with no source yet). The Deals table shows it in the Source column.
 
 Line items are `deal_line_item_set` / `deal_line_items_list`, and in the app under the deal's line-item routes. Each line has a product, name, quantity, and unit amount.
 
@@ -1918,7 +1918,7 @@ Expected result: a backlog task on that project. It does not wake a runtime unti
 
 Tasks are the unit of work on a board, so a person and an agent share one status line and one close rule.
 
-Open **Tasks** (`/tasks`). Statuses are `backlog`, `todo`, `doing`, `qa` (shown as QA), `review`, `stuck`, `done`, and `cancelled`. A submitted task with a QA runtime set goes to QA first, then to `review`, then to Joe's close card. A task belongs to a desk (a project) and can be assigned to a person or a runtime. Moving it to `todo` is what wakes a runtime. The board only calls the session API: it lists and patches, and the stage changes go through the same transitions the MCP tools use.
+Open **Tasks** (`/tasks`). Statuses are `backlog`, `todo`, `doing`, `qa` (shown as QA), `review`, `stuck`, `done`, and `cancelled`. A submitted task with a QA runtime set goes to QA first, then to `review`, then to the owner's close card. A task belongs to a desk (a project) and can be assigned to a person or a runtime. Moving it to `todo` is what wakes a runtime. The board only calls the session API: it lists and patches, and the stage changes go through the same transitions the MCP tools use.
 
 `human_approval_to_close` is the close gate. On means a person must accept a close card. Off, the default, means the assignee can finish it. Set the flag when you create the task. Words in the description do not change it.
 
@@ -4149,7 +4149,7 @@ List, bulk, and metrics filter `owner_user_id` to the caller. A router card's `o
 | `task_create` | `tasks:write` | Create a backlog task. Set `human_approval_to_close` on purpose. Default is false. Takes a due date and links to an account, deal, campaign, or contacts. A near-duplicate open task on the same desk returns a warning. A strong title match blocks unless `allow_duplicate` and `duplicate_reason` are set. | `title`, `description`, `project_id`, `assignee_type`, `assignee_id`, `domain`, `human_approval_to_close`, `priority`, `hidden_until`, `due_date`, `account_id`, `deal_id`, `campaign_id`, `contact_ids`, `related_entities`, `links`, `tag_slugs`, `allow_duplicate`, `duplicate_reason` |
 | `task_list` | `tasks:read` | List tasks. Hidden tasks stay out unless `include_hidden` is true. | `domain`, `status`, `assignee_type`, `assignee_id`, `project_id`, `limit`, `include_hidden` |
 | `task_hide` | `tasks:write` | Set or clear `hidden_until`. | `task_id`, `hidden_until` |
-| `task_set_close_gate` | `tasks:write` | Set `human_approval_to_close` on an existing task. Raise-only for agents: `true` is open to any caller; `false` needs an admin/Joe session. Reason required; each change writes a task comment. | `task_id`, `value`, `reason`, `actor` |
+| `task_set_close_gate` | `tasks:write` | Set `human_approval_to_close` on an existing task. Raise-only for agents: `true` is open to any caller; `false` needs an admin session. Reason required; each change writes a task comment. | `task_id`, `value`, `reason`, `actor` |
 | `task_set_due` | `tasks:write` | Set or clear a task's `due_date`. `YYYY-MM-DD` means end of day America/Los_Angeles, or pass ISO-8601. Omit or null clears. | `task_id`, `due_date`, `actor` |
 | `task_claim` | `tasks:write` | Claim `todo` tasks for a runtime. | `assignee_id`, `claimed_by`, `limit` |
 | `task_claim_work_item` | `tasks:write` | Claim the one task a work item points at. | `work_item_id`, `claimed_by` |
@@ -4229,7 +4229,7 @@ List, bulk, and metrics filter `owner_user_id` to the caller. A router card's `o
 | `entity_graph_checkin` | `graph:write` | Check in entities for a lane without an activity. | `lane`, `run_id`, `entities`, `links`, `notes`, `flags` |
 | `graph_checkin` | `graph:write` | Deprecated alias of `meeting_graph_checkin`. | same as `meeting_graph_checkin` |
 | `graph_checkin_revert` | `graph:write` | Revert a check-in by run id. | `run_id` |
-| `resolve_meeting_desk` | `graph:write` | Pick the desk for meeting task proposals: calendar tag, then `meeting_desk_rules`, else CoS. Copy the returned `assignment` onto every `wiki_task_proposed` flag. | `activity_id`, `calendar_event_id`, `title`, `body`, `attendee_emails` |
+| `resolve_meeting_desk` | `graph:write` | Pick the desk for meeting task proposals: calendar tag, then `meeting_desk_rules`, else the default desk. Copy the returned `assignment` onto every `wiki_task_proposed` flag. | `activity_id`, `calendar_event_id`, `title`, `body`, `attendee_emails` |
 | `calendar_event_desk_tag_set` | `graph:write` | Set or remove the calendar desk tag on one `calendar_event` (`metadata.desk_project_id`), the tag `resolve_meeting_desk` reads first. Merges into metadata only: does not replace metadata or `raw_payload`, and does not write `activities.project_id`. Refuses a non-calendar row and an unknown or inactive project (`completed`, `paused`, `cancelled`). Setting the same project again returns `changed: false`. A tag this tool did not set (no agent provenance, or a `role=desk` link) stays unless `force` is true. `remove` clears the metadata tag; `force` also drops conflicting `role=desk` links. `actor` defaults to the caller. | `activity_id`, `project_id`, `reason`, `actor`, `remove`, `force` |
 
 ## Files and marketing assets

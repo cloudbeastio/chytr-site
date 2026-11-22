@@ -10,7 +10,7 @@ unlisted: false
 
 # App and environment
 
-> **Preview.** Self-hosting chytr is not verified on a clean stack. Migrations still contain a fixed operator user, the Supabase config is pinned to one project, and there is no owner bootstrap. This page describes the intended flow. Do not treat it as a supported install.
+> **Preview.** Self-hosting chytr is not yet verified on a clean stack. `supabase/config.toml` ships placeholders (`project_id = "your-project-ref"`, a placeholder `site_url`, example redirect URLs) that you replace with your own project's values. The baseline still refers to a fixed placeholder owner id in some functions (see [Database and Edge Functions](/docs/self-host/database)), and `public.bootstrap_owner` claims a fresh install for its first owner. This page describes the intended flow. Do not treat it as a supported install.
 
 The app lives in `apps/cockpit`. It is a Next.js app. The browser talks to `/cockpit/api` on the same host. That API uses the signed-in user's Supabase session.
 
@@ -81,7 +81,7 @@ content_path = "./supabase/templates/magic_link.html"
 
 MCP OAuth consent is a different URL. `supabase/config.toml` points the OAuth server authorization path at the `auth-pages` Edge Function, not at chytr `/login`.
 
-Do not copy `site_url` or the redirect list from the committed `supabase/config.toml`; they describe another deployment. In your project's Auth URL settings, set the Site URL to your app's public origin and add `<your-app-origin>/login` to the redirect allowlist. The exact dashboard click-path has not been rechecked against the current Supabase UI.
+`supabase/config.toml` ships placeholders: a `site_url` built on the `your-project-ref` placeholder host, and example redirect URLs on `chytr.example.com`. Replace them with your own values, keeping the rule above: Site URL is your project's API host (`https://<your-project-ref>.supabase.co`), and `<your-app-origin>/login` goes in Redirect URLs. The exact dashboard click-path has not been rechecked against the current Supabase UI.
 
 ## Sign-in form
 

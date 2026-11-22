@@ -1,5 +1,5 @@
 import { SiteHeader } from "@/components/SiteHeader"
-import { WAITLIST_URL } from "@/lib/site"
+import { WAITLIST_URL, REPO_URL } from "@/lib/site"
 
 // DRAFT COPY for Mark and Joe: every string on this page is a working draft, not approved.
 
@@ -66,7 +66,16 @@ export default function Home() {
             <a href="/docs" className="font-mono text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground">
               Read the docs
             </a>
+            <a
+              href={REPO_URL}
+              className="font-mono text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground"
+            >
+              Source on GitHub
+            </a>
           </div>
+          <pre className="mt-6 inline-block max-w-full overflow-x-auto rounded-md border border-border px-4 py-3 font-mono text-sm text-muted-foreground">
+            <code>{`git clone ${REPO_URL}.git`}</code>
+          </pre>
         </section>
 
         <section className="border-t border-border">

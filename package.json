@@ -10,7 +10,7 @@
     "check:docs": "node scripts/check-docs.mjs"
   },
   "dependencies": {
-    "next": "^16.2.10",
+    "next": "16.4.5",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "gray-matter": "^4.0.3",
